@@ -1,0 +1,54 @@
+/* style.css */
+
+/* Inter Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+    font-family: 'Inter', sans-serif;
+}
+
+/* FIX: Ensure HTML/Body take up full height and prevent main content from hiding */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #f1f5f9; /* Set dark BG outside container */
+}
+
+#app-container {
+    min-height: 100vh; 
+    width: 100%;
+    max-width: 1280px; 
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: #ffffff; /* Main App BG: White */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* FIX: Custom Scrollbar colors adjusted for light background */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+    background-color: rgba(129, 140, 248, 0.7); /* indigo-400/70 */
+    border-radius: 4px; 
+}
+.custom-scrollbar::-webkit-scrollbar-track { background-color: transparent; }
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(129, 140, 248, 0.7) transparent; }
+
+/* Custom Keyframes */
+@keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes slideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes blob {
+    0%, 100% { transform: translate(0px, 0px) scale(1); }
+    33% { transform: translate(30px, -50px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+.animate-fadeIn { animation: fadeIn 0.5s ease-out; }
+.animate-slideUp { animation: slideUp 0.5s ease-out; }
+.animate-blob { animation: blob 7s infinite; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+/* New background for dark sections (like Interview & Left Form Panel) */
+.bg-interna-dark { background-color: #0F172A; }
