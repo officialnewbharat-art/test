@@ -22,19 +22,24 @@
             font-family: 'Inter', sans-serif;
         }
         
-        /* FIX: Set body and main container to white/light background for light UI feel */
-        body {
-            background-color: #f1f5f9; /* slate-100 */
+        /* FIX: Ensure HTML/Body take up full height and prevent main content from hiding */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f5f9; /* Light Gray BG outside container */
         }
+        
         #app-container {
-            height: 100dvh; 
+            /* FIX: Use min-height and flex-col for correct vertical layout */
+            min-height: 100vh; 
             width: 100%;
             max-width: 1280px; 
             margin: 0 auto;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            background-color: #ffffff; /* White */
+            background-color: #ffffff; /* Main App BG: White */
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
@@ -66,7 +71,7 @@
     </style>
 </head>
 <body class="h-full">
-    <div id="app-container" class="lg:h-[95vh] rounded-xl lg:mt-5 overflow-hidden">
+    <div id="app-container" class="lg:h-[95vh] rounded-xl lg:mt-5">
         <div id="content-area" class="flex-1 w-full relative overflow-hidden flex flex-col">
             </div>
     </div>
@@ -108,7 +113,7 @@
                 const dataInt16 = new Int16Array(data.buffer);
                 const frameCount = dataInt16.length / numChannels;
                 const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-                const channelData = buffer.getChannelData(0); // Assuming mono for simplicity
+                const channelData = buffer.getChannelData(0); 
                 for (let i = 0; i < frameCount; i++) {
                     channelData[i] = dataInt16[i * numChannels] / 32768.0;
                 }
@@ -173,11 +178,11 @@
             timeLeft: 600,
             // UI States
             showTranscript: false,
-            activeTab: 'qa', // Default to QA Analysis for details
-            deviceStatus: null,
-            networkQuality: null,
+            activeTab: 'qa', 
+            deviceStatus: 'Awaiting Permission...',
+            networkQuality: 'checking',
             latencyMs: 0,
-            noiseStatus: null,
+            noiseStatus: 'checking',
         };
 
         const contentArea = document.getElementById('content-area');
@@ -195,7 +200,7 @@
 
             // --- Header & Logo Setup ---
             const showHeader = currentStep !== AppStep.INTERVIEW;
-            const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM || currentStep === AppStep.INSTRUCTIONS; // Most screens are light background
+            const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM || currentStep === AppStep.INSTRUCTIONS;
             
             const steps = [
                 { id: AppStep.FORM, label: 'Profile' },
@@ -209,7 +214,7 @@
             const logoColorClass = isLightBackground ? 'text-indigo-600' : 'text-indigo-400';
             const logoElement = `
                 <div class="flex items-center gap-2 md:gap-3 pointer-events-auto">
-                    <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20">
+                    <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgMS44LTMuMi4yIDIuMS0uMyA0LjkgMCA1LjV6bS0zIDMuNWMtLjQuNi0xLjQuOS0xLjctLjEtLjMuOC0uNiAxLjgtLjYgLjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMgMi40IDB6Ii8+PC9zdmc+'">
                     <h1 class="text-lg md:text-xl font-bold tracking-tight ${isLightBackground ? 'text-slate-900' : 'text-white'}">
                         <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">Interna</span>
                         <span class="${logoColorClass}">.ai</span>
@@ -328,7 +333,7 @@
                                                 ${PREDEFINED_ROLES.map(role => `<option value="${role}" ${appState.candidate.field === role ? 'selected' : ''}>${role}</option>`).join('')}
                                             </select>
                                             <div class="absolute right-0 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg></div>
-                                        </div>
+                                            </div>
                                     </div>
                                     <div class="group">
                                         <label for="jd" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-600 transition-colors">Job Description / Context (Min 20 chars)</label>
@@ -565,7 +570,7 @@
 
             const { rating, passed, terminationReason, feedback, questions } = result;
             const isDisqualified = !!terminationReason;
-            const activeTab = appState.activeTab || 'qa'; // Default to QA Analysis for details
+            const activeTab = appState.activeTab || 'qa'; 
             
             // UI classes based on score
             const scoreColor = passed ? 'text-emerald-600' : rating >= 5 ? 'text-amber-600' : 'text-rose-600';
@@ -1380,14 +1385,15 @@
 
 
         // --- LIFECYCLE / INIT ---
-        document.addEventListener('DOMContentLoaded', () => {
+        // FIX: Ensure rendering starts immediately once the script is executed.
+        (function initializeApp() {
             // Expose global methods used in inline HTML
             window.handleTermination = handleTermination;
             
             // Start the application by rendering the initial form screen
             renderApp();
             
-            // Start the silent timeout loop (must be outside of render/initSession)
+            // Start the silent timeout loop
             appState.silenceInterval = setInterval(() => {
                 if (!appState.isConnected || appState.terminationTriggered || appState.isAiSpeaking || !appState.isWaitingForResponse) return;
                 
@@ -1416,7 +1422,7 @@
                     }
                 }
             }, 1000);
-        });
+        })();
 
     </script>
 </body>
