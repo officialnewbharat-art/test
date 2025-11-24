@@ -12,7 +12,7 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: #f1f5f9; /* Set dark BG outside container */
+    background-color: #f1f5f9; /* Light Gray BG outside container */
 }
 
 #app-container {
