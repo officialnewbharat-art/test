@@ -11,7 +11,6 @@ const GEMINI_API_KEY = "AIzaSyC5Cr8zfgd0yr7AwsqK4smq8-RJin2S9ng";
 // --- TYPES & CONSTANTS ---
 const AppStep = {
     FORM: 'FORM',
-    // INSTRUCTIONS step permanently removed.
     INTERVIEW: 'INTERVIEW',
     EVALUATING: 'EVALUATING',
     RESULT: 'RESULT',
@@ -26,7 +25,8 @@ const AudioUtils = {
         return btoa(binary);
     },
     decode: (base64) => {
-        const binaryString = atob(base6        4);
+        // FIX: Corrected syntax error which caused global script crash
+        const binaryString = atob(base64); 
         const len = binaryString.length;
         const bytes = new Uint8Array(len);
         for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
