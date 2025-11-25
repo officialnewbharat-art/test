@@ -627,8 +627,7 @@ function handleFormSubmit(e) {
     startInterviewSession();
 }
 
-// FIX: Removed all utility functions related to the old Instructions screen UI:
-// getNetworkUI, getNoiseUI, updateInstructionsUI, checkNetworkSpeed, handleAudioInput, checkInitialDeviceStatus, checkPermissionsAndStartInterview
+// FIX: Removed all utility functions related to the old Instructions screen UI logic.
 
 async function startInterviewSession() {
     disconnectSession();
