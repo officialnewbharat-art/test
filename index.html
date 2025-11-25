@@ -695,15 +695,17 @@
             }
             errorMsg.classList.add('hidden');
 
-            // FIX: Transition directly to the INTERVIEW step and call the start function.
+            // 1. Force state transition to Live screen immediately
             updateState({ 
                 candidate: { name, jobDescription, field, language },
                 step: AppStep.INTERVIEW,
-                deviceStatus: 'Awaiting Permission...', // Reset status before trying to get mic access
+                deviceStatus: 'Awaiting Permission...', 
             });
             
-            // Start the interview session immediately, which will handle device permissions.
-            startInterviewSession();
+            // 2. FIX: Delay the heavy asynchronous call to ensure the UI has time to render the new screen (prevents hang/visual crash)
+            setTimeout(() => {
+                startInterviewSession();
+            }, 100); 
         }
 
 
