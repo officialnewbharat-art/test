@@ -23,13 +23,13 @@ const app = express();
 // 1. CORS for client-side development
 app.use(cors());
 
-// 2. Simple Rate Limiting (100 requests per 15 minutes)
+// 2. Rate Limiting (100 requests per 15 minutes)
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // Max requests per IP
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later.' },
+    message: { error: 'Too many requests, please try again later. (Proxy Rate Limit)' },
 });
 
 // Apply rate limiting only to the API endpoint
@@ -42,25 +42,26 @@ app.use(express.json());
 
 /**
  * Endpoint to proxy calls to the Gemini API.
- * Request body expected: { prompt: string, model: string, isJson: boolean }
+ * Request body expected: { prompt: string, model: string, isJson: boolean, options: object }
  */
 app.post('/api/gemini', async (req, res) => {
-    const { prompt, model, isJson } = req.body;
+    const { prompt, model, isJson, options } = req.body;
 
     if (!prompt) {
         return res.status(400).json({ error: 'Missing prompt in request body.' });
     }
     
-    // Set parameters based on the request
-    const temperature = isJson ? 0.2 : 0.7;
-    const responseMimeType = isJson ? "application/json" : "text/plain";
+    // Set configuration options, prioritizing client-side options
+    const config = {
+        temperature: options?.temperature || (isJson ? 0.2 : 0.7),
+        maxOutputTokens: options?.maxOutputTokens || 2048,
+        responseMimeType: isJson ? "application/json" : "text/plain",
+    };
     
-    // Safety Settings (optional but good practice)
+    // Default safety settings
     const safetySettings = [
-      {
-        category: "HARM_CATEGORY_HARASSMENT",
-        threshold: "BLOCK_MEDIUM_AND_ABOVE",
-      },
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
     ];
 
     try {
@@ -68,9 +69,7 @@ app.post('/api/gemini', async (req, res) => {
             model: model || 'gemini-2.5-flash',
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             config: {
-                temperature: temperature,
-                maxOutputTokens: 2048,
-                responseMimeType: responseMimeType,
+                ...config,
                 safetySettings: safetySettings,
             },
         });
@@ -82,14 +81,15 @@ app.post('/api/gemini', async (req, res) => {
 
     } catch (error) {
         console.error('Gemini API Error:', error.message);
-        // Forward HTTP error status if available, otherwise use 500
-        const statusCode = error.response && error.response.status ? error.response.status : 500;
-        const errorMessage = error.response && error.response.data ? error.response.data.error.message : 'Internal Server Error';
+        // Extract better error message from the Google API response structure
+        const apiErrorMessage = error.message.includes('API_KEY_INVALID') 
+            ? 'API Key is invalid or not authorized.' 
+            : error.message.split('at GoogleGenAI')[0].trim() || 'Internal Server Error';
         
-        res.status(statusCode).json({
-            error: `Failed to call Gemini API: ${errorMessage}`,
-            message: errorMessage,
-            code: statusCode
+        // The GoogleGenAI library doesn't expose HTTP status easily, use 500 default
+        res.status(500).json({
+            error: `Failed to call Gemini API: ${apiErrorMessage}`,
+            code: 500
         });
     }
 });
@@ -97,7 +97,7 @@ app.post('/api/gemini', async (req, res) => {
 // --- Server Start ---
 app.listen(PORT, () => {
     console.log(`\n🤖 Interna Proxy Server Running!`);
-    console.log(`Open http://localhost/index.html (or wherever you host the HTML)`);
+    console.log(`Access the front-end (index.html) in your browser.`);
     console.log(`Proxy endpoint: http://localhost:${PORT}/api/gemini`);
     console.log(`\n!!! IMPORTANT !!!`);
     console.log(`Set the API Key in your terminal: export GEMINI_API_KEY="YOUR_API_KEY"`);
