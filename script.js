@@ -341,10 +341,12 @@ function renderInstructions() {
                              </ul>
                           </div>
                        </div>
-
-                       <button id="permission-btn" ${status === 'Microphone Granted' && appState.networkQuality !== 'poor' && (appState.noiseStatus === 'good' || appState.noiseStatus === 'fair') ? '' : 'disabled'}
+                       
+                       <p id="noise-warning-message" class="text-center text-xs text-amber-500 font-bold mt-3 ${appState.noiseStatus === 'fair' ? '' : 'hidden'}">Warning: Noise is fair. Please keep silence for best transcription quality.</p>
+                       
+                       <button id="permission-btn" ${appState.deviceStatus === 'Microphone Granted' ? '' : 'disabled'}
                          class="w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-between px-6 lg:px-8 ${
-                           status === 'Microphone Granted' && appState.networkQuality !== 'poor' && (appState.noiseStatus === 'good' || appState.noiseStatus === 'fair')
+                           appState.deviceStatus === 'Microphone Granted'
                            ? 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-indigo-200 cursor-pointer transform hover:-translate-y-1' 
                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                          }"
@@ -739,14 +741,16 @@ function updateInstructionsUI() {
     const noiseContainer = document.getElementById('noise-status-container');
     const noiseMsg = document.getElementById('noise-error-message');
     const micDeniedMsg = document.getElementById('mic-denied-message');
+    const noiseWarningMsg = document.getElementById('noise-warning-message'); // New warning message
 
     const status = appState.deviceStatus;
     const netUI = getNetworkUI(appState.latencyMs);
     const noiseUI = getNoiseUI(appState.noiseStatus);
     
-    // FIX: Relaxed Noise check: 'good' (quiet) OR 'fair' (acceptable) is now allowed.
-    const isNoiseAcceptable = appState.noiseStatus === 'good' || appState.noiseStatus === 'fair';
-    const canStart = status === 'Microphone Granted' && appState.networkQuality !== 'poor' && isNoiseAcceptable;
+    // FIX: The button is now enabled simply if the Microphone is granted. 
+    // This allows the user to proceed even with weak network/fair noise.
+    const isMicGranted = status === 'Microphone Granted';
+    const canStart = isMicGranted;
 
     if (micContainer && micLabel) {
         micLabel.textContent = status;
@@ -785,8 +789,22 @@ function updateInstructionsUI() {
         }`;
     }
     
+    // Display error messages only for critical failures (Denied Mic or Loud Noise)
     if (noiseMsg) noiseMsg.classList.toggle('hidden', appState.noiseStatus !== 'bad');
     if (micDeniedMsg) micDeniedMsg.classList.toggle('hidden', appState.deviceStatus !== 'Microphone Denied');
+
+    // Display warning for non-ideal conditions, but allow start
+    if (noiseWarningMsg) {
+        const isNonIdeal = appState.networkQuality === 'poor' || appState.noiseStatus === 'fair';
+        noiseWarningMsg.classList.toggle('hidden', !isNonIdeal);
+        if (isNonIdeal) {
+            let msg = "Warning: Non-ideal conditions. Proceeding may affect transcription accuracy.";
+            if (appState.networkQuality === 'poor') msg = "Warning: Network is weak. Expect lag and slower AI responses.";
+            if (appState.noiseStatus === 'fair') msg = "Warning: Noise is fair. Please keep silence for best transcription quality.";
+            if (appState.networkQuality === 'poor' && appState.noiseStatus === 'fair') msg = "Warning: Network is weak and noise is fair. Quality may be affected.";
+            noiseWarningMsg.textContent = msg;
+        }
+    }
 }
 
 
@@ -881,11 +899,11 @@ async function checkInitialDeviceStatus() {
 }
 
 async function checkPermissionsAndStartInterview() {
-    // FIX: Relaxed check to allow 'fair' noise status
-    const canStart = appState.deviceStatus === 'Microphone Granted' && appState.networkQuality !== 'poor' && (appState.noiseStatus === 'good' || appState.noiseStatus === 'fair');
+    // FIX: Only check for Microphone Granted and API Key. Ignore Network/Noise status for starting.
+    const isMicGranted = appState.deviceStatus === 'Microphone Granted';
 
-    if (!canStart) {
-        alert("Please ensure Microphone Access is granted and network is not poor. Noise level must be Quiet or Fair to proceed.");
+    if (!isMicGranted) {
+        alert("CRITICAL ERROR: Please grant Microphone Access to begin the interview.");
         return;
     }
 
@@ -899,8 +917,6 @@ async function checkPermissionsAndStartInterview() {
 }
 
 // --- INTERVIEW SESSION CORE LOGIC (VAD, AI, Tooling) ---
-
-// [Rest of the logic: drawVisualizer, disconnectSession, handleTermination, startInterviewSession, handleInterviewComplete, generateScore, toggleMute, resetApp remain unchanged from the previous robust implementation.]
 
 const endInterviewTool = {
     name: 'endInterview',
