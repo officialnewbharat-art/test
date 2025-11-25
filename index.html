@@ -7,7 +7,62 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* style.css */
+
+        /* Inter Font Import */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* FIX: Ensure HTML/Body take up full height and prevent main content from hiding */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f1f5f9; /* Light Gray BG outside container */
+        }
+
+        #app-container {
+            min-height: 100vh; 
+            width: 100%;
+            max-width: 1280px; 
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: #ffffff; /* Main App BG: White */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* FIX: Custom Scrollbar colors adjusted for light background */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background-color: rgba(129, 140, 248, 0.7); /* indigo-400/70 */
+            border-radius: 4px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-track { background-color: transparent; }
+        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(129, 140, 248, 0.7) transparent; }
+
+        /* Custom Keyframes */
+        @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes slideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        @keyframes blob {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out; }
+        .animate-slideUp { animation: slideUp 0.5s ease-out; }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+
+        /* New background for dark sections (like Interview & Left Form Panel) */
+        .bg-interna-dark { background-color: #0F172A; }
+    </style>
     
     <script type="importmap">
         {
@@ -24,6 +79,1121 @@
         </div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <script type="module">
+        // script.js
+
+        import { GoogleGenAI, Type } from 'https://aistudiocdn.com/@google/genai@^1.30.0';
+
+        // ===============================================
+        // 🚨 IMPORTANT: PASTE YOUR GEMINI API KEY HERE 🚨
+        // ===============================================
+        const GEMINI_API_KEY = "AIzaSyC5Cr8zfgd0yr7AwsqK4smq8-RJin2S9ng"; 
+        // ===============================================
+
+        // --- TYPES & CONSTANTS ---
+        const AppStep = {
+            FORM: 'FORM',
+            INTERVIEW: 'INTERVIEW',
+            EVALUATING: 'EVALUATING',
+            RESULT: 'RESULT',
+        };
+
+        // --- AUDIO UTILS (VAD and Encoding) ---
+        const AudioUtils = {
+            encode: (bytes) => {
+                let binary = '';
+                const len = bytes.byteLength;
+                for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
+                return btoa(binary);
+            },
+            decode: (base64) => {
+                const binaryString = atob(base64); 
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+                return bytes;
+            },
+            decodeAudioData: async (data, ctx, sampleRate, numChannels) => {
+                const dataInt16 = new Int16Array(data.buffer);
+                const frameCount = dataInt16.length / numChannels;
+                const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+                const channelData = buffer.getChannelData(0); 
+                for (let i = 0; i < frameCount; i++) {
+                    channelData[i] = dataInt16[i * numChannels] / 32768.0;
+                }
+                return buffer;
+            },
+            downsampleBuffer: (buffer, inputSampleRate, outputSampleRate = 16000) => {
+                if (inputSampleRate === outputSampleRate || buffer.length === 0) return buffer;
+                const sampleRateRatio = inputSampleRate / outputSampleRate;
+                const newLength = Math.ceil(buffer.length / sampleRateRatio);
+                const result = new Float32Array(newLength);
+                let offsetBuffer = 0;
+                for (let i = 0; i < newLength; i++) {
+                    const nextOffsetBuffer = Math.round((i + 1) * sampleRateRatio);
+                    let accum = 0, count = 0;
+                    const currentEnd = Math.min(nextOffsetBuffer, buffer.length);
+                    
+                    for (let j = offsetBuffer; j < currentEnd; j++) {
+                        accum += buffer[j];
+                        count++;
+                    }
+                    result[i] = count > 0 ? accum / count : 0;
+                    offsetBuffer = nextOffsetBuffer;
+                }
+                return result;
+            },
+            createBlob: (data, sampleRate = 16000) => {
+                const l = data.length;
+                const int16 = new Int16Array(l);
+                for (let i = 0; i < l; i++) {
+                    const val = data[i] || 0;
+                    const s = Math.max(-1, Math.min(1, val));
+                    int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                return {
+                    data: AudioUtils.encode(new Uint8Array(int16.buffer)),
+                    mimeType: `audio/pcm;rate=${sampleRate}`,
+                };
+            }
+        };
+
+        // --- STATE MANAGEMENT ---
+        let appState = {
+            step: AppStep.FORM,
+            candidate: { name: '', jobDescription: '', field: '', language: '' },
+            result: null,
+            session: null,
+            stream: null,
+            audioContext: null,
+            inputAudioContext: null,
+            analyser: null,
+            animationFrame: 0,
+            isConnected: false,
+            nextAudioStartTime: 0,
+            fullTranscriptHistory: [],
+            terminationTriggered: false,
+            isAiSpeaking: false,
+            isWaitingForResponse: false,
+            lastAiTurnEndTime: 0,
+            isProcessingTimeout: false,
+            silenceWarningCount: 0,
+            timeLeft: 600,
+            // UI States
+            showTranscript: false,
+            activeTab: 'qa', 
+            deviceStatus: 'Awaiting Permission...',
+            networkQuality: 'checking',
+            latencyMs: 0,
+            noiseStatus: 'checking',
+        };
+
+        const contentArea = document.getElementById('content-area');
+
+        function updateState(newState, render = true) {
+            Object.assign(appState, newState);
+            // FIX: Render only when requested OR if step has changed, to reduce flickering
+            if (render || newState.step !== undefined) renderApp();
+        }
+
+
+        // --- RENDER FUNCTIONS (UI Builders) ---
+
+        function renderApp() {
+            const currentStep = appState.step;
+            let html = '';
+
+            // --- Header & Logo Setup ---
+            const showHeader = currentStep !== AppStep.INTERVIEW;
+            const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM; 
+            
+            const steps = [
+                { id: AppStep.FORM, label: 'Profile' },
+                { id: AppStep.INTERVIEW, label: 'Live' },
+                { id: AppStep.EVALUATING, label: 'Review' },
+                { id: AppStep.RESULT, label: 'Result' },
+            ];
+            // Find index of current step in the reduced array
+            const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+            
+            const logoColorClass = isLightBackground ? 'text-indigo-600' : 'text-indigo-400';
+            const logoElement = `
+                <div class="flex items-center gap-2 md:gap-3 pointer-events-auto">
+                    <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgMS44LTMuMi4yIDIuMS0uMyA0LjkgMCA1LjU1em0tMyAzLjVjLS40LjYtMS40LjktMS43LS4xLS4zLjgtLjYgMS44LS42LjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMgMi40IDB6Ii8+PC9zdmc+'">
+                    <h1 class="text-lg md:text-xl font-bold tracking-tight ${isLightBackground ? 'text-slate-900' : 'text-white'}">
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">Interna</span>
+                        <span class="${logoColorClass}">.ai</span>
+                    </h1>
+                </div>
+            `;
+
+            const headerHtml = showHeader ? `
+                <header class="absolute top-0 left-0 w-full z-50 px-4 py-3 md:px-6 md:py-4 pointer-events-none">
+                    <div class="max-w-7xl mx-auto flex items-center justify-between">
+                        ${logoElement}
+                        <div class="hidden md:flex items-center gap-2 bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-200 shadow-sm pointer-events-auto">
+                        ${steps.map((s, idx) => `
+                            <div class="flex items-center">
+                                <div class="flex items-center gap-2 px-3 py-1 rounded-full transition-all ${
+                                    idx === currentStepIndex ? 'bg-slate-900 text-white' : 
+                                    idx < currentStepIndex ? 'text-emerald-600' : 'text-slate-400'
+                                }">
+                                   <span class="w-2 h-2 rounded-full ${idx === currentStepIndex ? 'bg-white animate-pulse' : idx < currentStepIndex ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                                   <span class="text-xs font-bold uppercase tracking-wide">${s.label}</span>
+                                </div>
+                                ${idx < steps.length - 1 ? '<div class="w-4 h-px bg-slate-200 mx-1"></div>' : ''}
+                            </div>
+                        `).join('')}
+                        </div>
+                    </div>
+                </header>
+            ` : '';
+            
+            // --- Content Rendering ---
+            if (currentStep === AppStep.FORM) html = renderCandidateForm();
+            else if (currentStep === AppStep.INTERVIEW) html = renderInterviewSession();
+            else if (currentStep === AppStep.EVALUATING) html = renderEvaluatingScreen();
+            else if (currentStep === AppStep.RESULT) html = renderResultScreen();
+
+            contentArea.innerHTML = headerHtml + html;
+
+            // Re-attach listeners
+            if (currentStep === AppStep.FORM) {
+                // FIX: Ensure listener is attached to the form submit event
+                document.getElementById('candidate-form')?.addEventListener('submit', handleFormSubmit);
+            } 
+            else if (currentStep === AppStep.INTERVIEW) {
+                const muteBtn = document.getElementById('mute-btn');
+                if (muteBtn) muteBtn.onclick = toggleMute;
+                const transcriptBtn = document.getElementById('transcript-btn');
+                if (transcriptBtn) transcriptBtn.onclick = () => updateState({ showTranscript: !appState.showTranscript });
+            } else if (currentStep === AppStep.RESULT) {
+                document.getElementById('overview-tab')?.addEventListener('click', () => updateState({ activeTab: 'overview' }, false));
+                document.getElementById('qa-tab')?.addEventListener('click', () => updateState({ activeTab: 'qa' }, false));
+                document.getElementById('reset-btn-desktop')?.addEventListener('click', resetApp);
+                document.getElementById('reset-btn-mobile')?.addEventListener('click', resetApp);
+            }
+        }
+
+        // --- RENDER FORM SCREEN (unchanged) ---
+        function renderCandidateForm() {
+            const PREDEFINED_ROLES = ["Python Developer", "Frontend Engineer", "Backend Engineer", "Full Stack Developer", "Data Scientist"];
+            const LANGUAGES = ["English", "Spanish", "French", "German", "Hindi", "Japanese"];
+
+            return `
+                <div class="flex flex-col lg:grid lg:grid-cols-12 h-full w-full animate-fadeIn">
+                    <div class="lg:col-span-5 bg-interna-dark relative overflow-hidden flex flex-col justify-end lg:justify-center p-8 pt-24 lg:p-20 text-white min-h-[30vh] lg:min-h-0 shrink-0">
+                        <div class="absolute inset-0 opacity-30">
+                           <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500 via-slate-900 to-slate-900"></div>
+                        </div>
+                        <div class="relative z-10 space-y-4 lg:space-y-6">
+                           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm w-fit">
+                              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                              <span class="text-[10px] lg:text-xs font-bold uppercase tracking-widest">High-Fidelity Assessment</span>
+                           </div>
+                           <h1 class="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight leading-tight">
+                             Meet <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Interna</span>.
+                           </h1>
+                           <p class="text-xl md:text-2xl lg:text-3xl font-light text-slate-200 leading-tight">
+                             Your impartial, AI-driven technical interviewer.
+                           </p>
+                           <p class="text-sm lg:text-lg text-slate-400 max-w-md leading-relaxed hidden md:block">
+                             Conduct realistic voice interviews tailored to specific job descriptions. Get instant, unbiased feedback on technical accuracy.
+                           </p>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7 bg-white flex flex-col flex-1 overflow-y-auto custom-scrollbar">
+                        <div class="flex-1 p-6 md:p-12 lg:p-24">
+                            <div class="max-w-xl w-full mx-auto">
+                                <div class="mb-8 lg:mb-10">
+                                    <h2 class="text-xl lg:text-2xl font-bold text-slate-900">Candidate Profile</h2>
+                                    <p class="text-sm lg:text-base text-slate-500 mt-2">Configure Interna with the interview context.</p>
+                                    <p id="form-error-message" class="text-rose-500 text-sm font-medium mt-3 hidden"></p>
+                                </div>
+
+                                <form id="candidate-form" class="space-y-6 lg:space-y-8">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div class="group">
+                                            <label for="name" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-600 transition-colors">Full Name</label>
+                                            <input type="text" id="name" required class="w-full px-0 py-2 lg:py-3 bg-transparent border-b-2 border-slate-200 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-300 font-medium text-base lg:text-lg text-slate-900" placeholder="Jane Doe" value="${appState.candidate.name}"/>
+                                        </div>
+                                        <div class="group">
+                                            <label for="language" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-600 transition-colors">Interview Language</label>
+                                            <div class="relative">
+                                                <select id="language" required class="w-full px-0 py-2 lg:py-3 bg-transparent border-b-2 border-slate-200 focus:border-indigo-600 outline-none transition-all font-medium text-base lg:text-lg text-slate-900 appearance-none cursor-pointer">
+                                                    ${LANGUAGES.map(lang => `<option value="${lang}" ${appState.candidate.language === lang ? 'selected' : ''}>${lang}</option>`).join('')}
+                                                </select>
+                                                <div class="absolute right-0 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="group">
+                                        <label for="field" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-600 transition-colors">Role Title</label>
+                                        <div class="relative">
+                                            <select id="field" required class="w-full px-0 py-2 lg:py-3 bg-transparent border-b-2 border-slate-200 focus:border-indigo-600 outline-none transition-all font-medium text-base lg:text-lg text-slate-900 appearance-none cursor-pointer">
+                                                <option value="" disabled selected class="text-slate-300">Select a role...</option>
+                                                ${PREDEFINED_ROLES.map(role => `<option value="${role}" ${appState.candidate.field === role ? 'selected' : ''}>${role}</option>`).join('')}
+                                            </select>
+                                            <div class="absolute right-0 top-1/2 transform -translate-y-1/2 pointer-events-none text-slate-400"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg></div>
+                                            </div>
+                                    </div>
+                                    <div class="group">
+                                        <label for="jd" class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 group-focus-within:text-indigo-600 transition-colors">Job Description / Context (Min 20 chars)</label>
+                                        <textarea id="jd" required rows={5} class="w-full px-4 py-3 lg:py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all resize-none placeholder:text-slate-300 text-sm leading-relaxed text-slate-700" placeholder="Paste the full job description, key requirements, or specific topics to cover...">${appState.candidate.jobDescription}</textarea>
+                                    </div>
+                                    <div class="pt-4 lg:pt-6 pb-8">
+                                        <button type="submit" class="group w-full bg-slate-900 text-white py-4 lg:py-5 rounded-xl font-bold hover:bg-indigo-600 transition-all duration-300 shadow-xl hover:shadow-indigo-200 hover:-translate-y-1 flex items-center justify-between px-6 lg:px-8">
+                                            <span>Initialize Interna</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 group-hover:translate-x-1 transition-transform"><path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" /></svg>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- RENDER INTERVIEW SESSION (omitted for brevity) ---
+        function renderInterviewSession() {
+            const { status, timeLeft, isMuted, showTranscript, systemMessageStatus, transcriptLines, violationMessage, warningCount } = appState;
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = String(timeLeft % 60).padStart(2, '0');
+            const statusClass = status === 'connected' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : status === 'error' ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-amber-500/20 border-amber-500/30 text-amber-400';
+
+            return `
+                <div class="grid grid-rows-[auto_1fr_auto] h-full w-full bg-interna-dark text-white relative overflow-hidden animate-fadeIn">
+                    
+                    <div class="z-20 flex items-center justify-between px-6 py-4 bg-slate-900/50 backdrop-blur-md border-b border-white/5">
+                        <div class="flex items-center gap-4">
+                           <div class="flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${statusClass}">
+                               <span class="w-2 h-2 rounded-full ${status === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-current'}"></span>
+                               <span class="text-xs font-bold uppercase tracking-widest">${status === 'connected' ? (appState.isAiSpeaking ? 'AI SPEAKING' : appState.isWaitingForResponse ? 'YOUR TURN' : 'CONNECTED') : status.toUpperCase()}</span>
+                           </div>
+
+                           <div class="flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-sm font-bold transition-all duration-500 ${
+                               timeLeft < 60 ? 'bg-rose-500/20 border-rose-500/50 text-rose-400 animate-pulse' :
+                               timeLeft < 120 ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' :
+                               'bg-slate-800 border-slate-700 text-slate-300'
+                           }">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" /></svg>
+                              <span>${minutes}:${seconds}</span>
+                           </div>
+                        </div>
+                        
+                        ${warningCount > 0 ? `<div class="text-xs font-bold uppercase text-rose-500 bg-rose-900/50 p-2 rounded-full px-3 animate-pulse">Violation: ${warningCount}/3</div>` : ''}
+                    </div>
+
+                    <div class="relative flex items-center justify-center overflow-hidden">
+                       <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/30 via-slate-950 to-slate-950"></div>
+                       
+                       <canvas id="audio-canvas" class="absolute inset-0 w-full h-full opacity-80 z-0"></canvas>
+
+                       <div class="relative z-10 flex flex-col items-center justify-center transition-transform duration-300">
+                           <svg width="220" height="220" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg"
+                             class="transition-all duration-500 ${status === 'connected' ? 'drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]' : 'opacity-50 grayscale'}"
+                           >
+                              <rect x="20" y="20" width="160" height="160" rx="30" fill="#F1F5F9" />
+                              <path d="M85 20H115V15C115 12.2386 112.761 10 110 10H90C87.2386 10 85 12.2386 85 15V20Z" fill="#CBD5E1"/>
+                              <circle cx="65" cy="80" r="12" fill="#0F172A" />
+                              <circle cx="135" cy="80" r="12" fill="#0F172A" />
+                              ${status === 'connected' ? `
+                                  <circle cx="65" cy="80" r="4" fill="#38BDF8" class="animate-pulse" />
+                                  <circle cx="135" cy="80" r="4" fill="#38BDF8" class="animate-pulse" />
+                              ` : ''}
+                              <path d="M100 95L106 108H94L100 95Z" stroke="#0F172A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <ellipse id="robot-mouth" cx="100" cy="135" rx="20" ry="2" fill="#0F172A" class="transition-all duration-75 ease-out"/>
+                           </svg>
+                           
+                           <div class="mt-8 text-center min-h-[24px]">
+                               ${status === 'connecting' ? '<p class="text-indigo-300 animate-pulse">Connecting to Interna...</p>' : ''}
+                               ${status === 'error' ? '<p class="text-rose-400 font-bold">Connection Failed</p>' : ''}
+                               ${systemMessageStatus ? `<p class="text-amber-400 text-sm font-bold animate-bounce">${systemMessageStatus}</p>` : ''}
+                               ${violationMessage ? `<p class="text-rose-400 text-sm font-bold animate-bounce mt-2">${violationMessage}</p>` : ''}
+                           </div>
+                       </div>
+                    </div>
+
+                    <div class="z-20 bg-slate-900 border-t border-white/10 p-6">
+                       <div class="max-w-md mx-auto flex items-center justify-between gap-6">
+                          
+                          <button id="mute-btn" class="p-4 rounded-full transition-all duration-300 ${isMuted ? 'bg-rose-500/20 text-rose-500 hover:bg-rose-500/30' : 'bg-white/10 text-white hover:bg-white/20'}">
+                             ${isMuted ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M3.53 2.47a.75.75 0 00-1.06 1.06l18 18a.75.75 0 101.06-1.06l-18-18zM22.045 20.97l-3.055-3.055A11.24 11.24 0 0112 20.25c-5.695 0-10.399-4.19-11.126-9.662a.75.75 0 011.479-.213c.615 4.635 4.597 8.175 9.647 8.175 1.74 0 3.37-.421 4.816-1.163l3.229 3.229.353.353zM7.668 6.059l-2.56-2.56A11.25 11.25 0 0112 2.25c5.695 0 10.399 4.19 11.126 9.662a.75.75 0 11-1.479.213C21.032 7.49 17.05 3.95 12 3.95c-1.55 0-3.026.332-4.332.934.004.386-.746-.232 1.075l.232.1z" /></svg>` : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" /><path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h7.5z" /></svg>`}
+                          </button>
+
+                          <button onclick="handleTermination('User Aborted')" class="p-4 rounded-full bg-rose-600 text-white hover:bg-rose-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                              <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-2.625.75a.75.75 0 00-1.5 0v.667A5.498 5.498 0 0112 5.25c.578 0 1.144.072 1.694.205V3a.75.75 0 00-1.5 0v.667zM16.5 12a4.5 4.5 0 10-9 0 4.5 4.5 0 009 0zM12 18.75a6.75 6.75 0 004.568-1.744A.75.75 0 0016.25 16.5h-8.5a.75.75 0 00-.318.506c.394.887 1.05 1.6 1.897 2.15z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+
+                          <button id="transcript-btn" class="p-4 rounded-full transition-all duration-300 ${showTranscript ? 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30' : 'bg-white/10 text-white hover:bg-white/20'}">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path fillRule="evenodd" d="M3 4.5A1.5 1.5 0 014.5 3h15a1.5 1.5 0 011.5 1.5v15a1.5 1.5 0 01-1.5 1.5h-15a1.5 1.5 0 01-1.5-1.5v-15zm3 2.25a.75.75 0 000 1.5h12a.75.75 0 000-1.5H6zm0 4.5a.75.75 0 000 1.5h9a.75.75 0 000-1.5H6zm0 4.5a.75.75 0 000 1.5h6a.75.75 0 000-1.5H6z" clipRule="evenodd" /></svg>
+                          </button>
+                       </div>
+                    </div>
+
+                    <div id="transcript-drawer" class="absolute inset-x-0 bottom-0 z-10 bg-slate-900/95 backdrop-blur-xl border-t border-white/10 transition-transform duration-500 ease-in-out ${showTranscript ? 'translate-y-0 h-[60%]' : 'translate-y-full h-0'}" style="color: white;">
+                       <div class="h-full flex flex-col p-6 pb-24 overflow-y-auto custom-scrollbar">
+                           <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 sticky top-0 bg-slate-900/95 py-2">Live Transcript</h3>
+                           <div id="transcript-lines" class="space-y-4">
+                               ${transcriptLines.map(line => `
+                                   <div class="flex gap-3 ${line.speaker === 'ai' ? 'flex-row' : 'flex-row-reverse'}">
+                                       <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${line.speaker === 'ai' ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white'}">
+                                           ${line.speaker === 'ai' ? 'AI' : 'You'}
+                                       </div>
+                                       <div class="p-3 rounded-2xl text-sm max-w-[80%] ${line.speaker === 'ai' ? 'bg-white/10 text-slate-200 rounded-tl-none' : 'bg-emerald-900/30 text-emerald-100 rounded-tr-none border border-emerald-500/20'}" style="word-wrap: break-word; white-space: normal;">
+                                           ${line.text}
+                                       </div>
+                                   </div>
+                               `).join('')}
+                           </div>
+                       </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- RENDER EVALUATING SCREEN (omitted for brevity) ---
+        function renderEvaluatingScreen() {
+            return `
+                <div class="h-full w-full flex flex-col items-center justify-center bg-interna-dark relative overflow-hidden animate-fadeIn">
+                    <div class="absolute inset-0 opacity-20">
+                        <div class="absolute top-0 -left-4 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+                        <div class="absolute top-0 -right-4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+                        <div class="absolute -bottom-8 left-20 w-72 h-72 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+                    </div>
+                    
+                    <div class="relative z-10 text-center px-6">
+                       <div class="w-20 h-20 md:w-24 md:h-24 mx-auto mb-8 relative">
+                          <div class="absolute inset-0 border-t-4 border-indigo-500 rounded-full animate-spin"></div>
+                          <div class="absolute inset-2 border-t-4 border-purple-500 rounded-full animate-spin animation-delay-2000"></div>
+                       </div>
+                       <h2 class="text-2xl md:text-4xl font-bold text-white mb-4">Interna is Analyzing</h2>
+                       <p class="text-indigo-200 text-base md:text-lg max-w-md mx-auto">
+                         Compiling report for ${appState.candidate.field} competency model...
+                       </p>
+                    </div>
+                 </div>
+            `;
+        }
+
+        // --- RENDER RESULT SCREEN (omitted for brevity) ---
+        function renderResultScreen() {
+            const result = appState.result;
+            if (!result) return '<div>Evaluation data missing.</div>';
+
+            const { rating, passed, terminationReason, feedback, questions } = result;
+            const isDisqualified = !!terminationReason;
+            const activeTab = appState.activeTab || 'qa'; 
+            
+            // UI classes based on score
+            const scoreColor = passed ? 'text-emerald-600' : rating >= 5 ? 'text-amber-600' : 'text-rose-600';
+            const ringColor = passed ? 'border-emerald-500' : rating >= 5 ? 'border-amber-500' : 'border-rose-500';
+            const statusBg = passed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700';
+
+            return `
+                <div class="flex flex-col lg:grid lg:grid-cols-12 h-full w-full bg-slate-50 animate-slideUp">
+                   
+                   <div class="lg:col-span-4 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 shrink-0 z-10 pt-14 lg:pt-0 flex flex-col h-full">
+                      
+                      <div class="lg:hidden px-4 py-3 flex items-center justify-between bg-white/50 backdrop-blur-sm border-b border-slate-200">
+                          <div class="flex items-center gap-4">
+                              <div class="relative w-12 h-12 shrink-0">
+                                  <svg class="w-full h-full transform -rotate-90">
+                                      <circle cx="50%" cy="50%" r="45%" stroke="#f1f5f9" strokeWidth="8" fill="transparent" />
+                                      ${!isDisqualified ? `
+                                          <circle cx="50%" cy="50%" r="45%" stroke="${passed ? '#10b981' : '#f43f5e'}" strokeWidth="8" fill="transparent" strokeDasharray="${rating * 10} 100" />
+                                      ` : ''}
+                                  </svg>
+                                  <div class="absolute inset-0 flex items-center justify-center text-sm font-bold text-slate-900">${isDisqualified ? 'X' : rating}</div>
+                              </div>
+                              <div>
+                                  <h1 class="text-base font-bold text-slate-900 leading-tight truncate max-w-[180px]">${appState.candidate.name}</h1>
+                                  <span class="text-[10px] font-bold uppercase tracking-wide ${isDisqualified ? 'text-rose-600' : passed ? 'text-emerald-600' : 'text-rose-600'}">
+                                      ${isDisqualified ? 'Disqualified' : passed ? 'Qualified' : 'Not Qualified'}
+                                  </span>
+                              </div>
+                          </div>
+                          <button id="reset-btn-mobile" class="p-2 bg-slate-100 rounded-lg text-slate-600 hover:bg-slate-200 active:scale-95 transition-transform" aria-label="New Interview">
+                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                          </button>
+                      </div>
+
+                      <div class="hidden lg:flex flex-col flex-grow pt-24">
+                        <div class="px-6 py-4 lg:px-10 lg:py-6 border-b border-slate-100 bg-slate-50/50">
+                            <h2 class="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Candidate Evaluation</h2>
+                            <h1 class="text-xl lg:text-3xl font-bold text-slate-900 truncate" title="${appState.candidate.name}">${appState.candidate.name}</h1>
+                        </div>
+
+                        <div class="flex-grow flex flex-col items-center justify-center p-8 lg:p-10">
+                            ${isDisqualified ? `
+                                <div class="text-center">
+                                    <div class="w-24 h-24 lg:w-32 lg:h-32 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-12 h-12 lg:w-16 lg:h-16">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                                        </svg>
+                                    </div>
+                                    <h2 class="text-2xl lg:text-3xl font-bold text-rose-600 mb-2">DISQUALIFIED</h2>
+                                    <p class="text-slate-500 max-w-xs mx-auto">${terminationReason}</p>
+                                </div>
+                            ` : `
+                                <div class="relative mb-6 lg:mb-8">
+                                    <svg class="w-40 h-40 lg:w-56 lg:h-56 transform -rotate-90">
+                                        <circle cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="12" fill="transparent" class="text-slate-100"/>
+                                        <circle cx="50%" cy="50%" r="45%" stroke="currentColor" strokeWidth="12" fill="transparent" class="${ringColor}" strokeDasharray="100" strokeDashoffset="${100 - (rating * 10)}" pathLength="100" style="transition: stroke-dashoffset 1s ease-in-out;" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span class="text-4xl lg:text-6xl font-black text-slate-900">${rating}</span>
+                                        <span class="text-slate-400 text-base lg:text-lg font-medium">/ 10</span>
+                                    </div>
+                                </div>
+                            
+                                <div class="px-4 lg:px-6 py-2 lg:py-3 rounded-full text-xs lg:text-sm font-bold uppercase tracking-widest ${statusBg}">
+                                    ${passed ? 'Qualified Candidate' : 'Does Not Meet Bar'}
+                                </div>
+                            `}
+                        </div>
+
+                        <div class="hidden lg:block p-8 border-t border-slate-100 bg-slate-50/50">
+                            <button id="reset-btn-desktop" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-indigo-600 transition-all shadow-lg hover:shadow-indigo-200 flex items-center justify-center gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                              Start New Interview
+                            </button>
+                        </div>
+                      </div>
+                   </div>
+
+                   <div class="lg:col-span-8 bg-slate-50 flex flex-col flex-1 overflow-hidden lg:pt-16">
+                      
+                      ${!isDisqualified ? `
+                        <div class="bg-white border-b border-slate-200 px-4 lg:px-12 pt-2 lg:pt-6 shrink-0">
+                            <div class="flex gap-6 lg:gap-8">
+                                <button id="overview-tab" class="pb-3 lg:pb-4 text-sm lg:text-base font-bold border-b-2 transition-all ${
+                                    activeTab === 'overview' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+                                }">Overview</button>
+                                <button id="qa-tab" class="pb-3 lg:pb-4 text-sm lg:text-base font-bold border-b-2 transition-all flex items-center gap-2 ${
+                                    activeTab === 'qa' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+                                }">Q&A Analysis ${questions ? `<span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold">${questions.length}</span>` : ''}</button>
+                            </div>
+                        </div>
+                      ` : ''}
+
+                      <div class="flex-1 overflow-y-auto p-4 lg:p-12 custom-scrollbar">
+                         <div class="max-w-4xl mx-auto animate-fadeIn pb-20 lg:pb-0">
+                            
+                            ${isDisqualified ? `
+                                <div class="bg-white rounded-2xl p-6 lg:p-8 border border-slate-200 text-center mt-4 lg:mt-0 shadow-lg">
+                                    <h3 class="text-lg lg:text-xl font-bold text-slate-900 mb-4">🚫 Security Violation Report</h3>
+                                    <p class="text-slate-600 mb-6">This session was flagged for suspicious activity inconsistent with our proctoring guidelines.</p>
+                                    <div class="inline-block text-left bg-slate-50 p-6 rounded-xl border border-slate-100 w-full">
+                                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Reason for Termination</div>
+                                        <div class="font-mono text-rose-600 text-sm lg:text-base">${terminationReason}</div>
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${activeTab === 'overview' && !isDisqualified ? `
+                                <div class="space-y-6 lg:space-y-12">
+                                    <div>
+                                        <h3 class="text-sm lg:text-lg font-bold text-slate-900 mb-3 lg:mb-6 flex items-center gap-2">
+                                            <span class="bg-indigo-100 text-indigo-600 p-1.5 lg:p-2 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 lg:w-5 lg:h-5"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" /></svg></span>
+                                            Executive Summary
+                                        </h3>
+                                        <div class="bg-white p-5 lg:p-8 rounded-2xl shadow-sm border border-slate-100 text-slate-700 text-sm lg:text-lg leading-relaxed lg:leading-loose">
+                                            ${feedback}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm lg:text-lg font-bold text-slate-900 mb-3 lg:mb-6">Key Metrics</h3>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-6">
+                                            <div class="bg-white p-4 lg:p-6 rounded-xl border border-slate-100 shadow-sm">
+                                            <div class="flex justify-between items-end mb-3 lg:mb-4">
+                                                <span class="text-slate-500 font-medium text-xs lg:text-base">Technical Depth</span>
+                                                <span class="text-slate-900 font-bold text-base lg:text-xl">${rating >= 8 ? 'High' : rating >= 5 ? 'Medium' : 'Low'}</span>
+                                            </div>
+                                            <div class="w-full bg-slate-100 h-1.5 lg:h-2 rounded-full overflow-hidden"><div class="h-full bg-indigo-500" style="width: ${rating * 10}%"></div></div>
+                                            </div>
+                                            <div class="bg-white p-4 lg:p-6 rounded-xl border border-slate-100 shadow-sm">
+                                            <div class="flex justify-between items-end mb-3 lg:mb-4">
+                                                <span class="text-slate-500 font-medium text-xs lg:text-base">Communication & Clarity</span>
+                                                <span class="text-slate-900 font-bold text-base lg:text-xl">${rating >= 7 ? 'Clear' : 'Needs Work'}</span>
+                                            </div>
+                                            <div class="w-full bg-slate-100 h-1.5 lg:h-2 rounded-full overflow-hidden"><div class="h-full bg-cyan-500" style="width: ${rating >= 7 ? '90%' : '50%'}"></div></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${activeTab === 'qa' && !isDisqualified ? `
+                                <div class="space-y-4 lg:space-y-6">
+                                    <div class="bg-white p-4 lg:p-6 rounded-2xl shadow-sm border border-slate-200 text-sm lg:text-base text-slate-700">
+                                       <h4 class="font-bold text-lg text-slate-900 mb-2">🎯 Detailed Marking Breakdown (Q&A Analysis):</h4>
+                                       <p class="text-slate-600">Each question below shows the specific mark (Rating) and a detailed AI Analysis explaining **exactly where points were lost or gained** (why number cut hua hai), ensuring proper marking.</p>
+                                    </div>
+                                    
+                                    ${questions?.map((qa, idx) => `
+                                        <div class="bg-white rounded-xl lg:rounded-2xl shadow-md border border-slate-200 overflow-hidden transition-all hover:shadow-lg">
+                                            <div class="p-4 lg:p-6 border-b border-slate-100 flex items-start gap-3 lg:gap-4">
+                                            <div class="flex-1">
+                                                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 lg:mb-2">Question ${idx + 1}</h4>
+                                                <p class="text-sm lg:text-lg font-semibold text-slate-900">${qa.question}</p>
+                                            </div>
+                                            <div class="flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0 border ${
+                                                qa.rating >= 7 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                                qa.rating >= 5 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                                                'bg-rose-50 border-rose-100 text-rose-600'
+                                            }">
+                                                <span class="text-xl font-bold">${qa.rating}</span>
+                                            </div>
+                                            </div>
+                                            <div class="p-4 lg:p-6 grid grid-cols-1 gap-4 lg:gap-6">
+                                                <div>
+                                                    <h5 class="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-1 lg:mb-2">Candidate Summary</h5>
+                                                    <p class="text-slate-600 text-xs lg:text-sm leading-relaxed">${qa.candidateAnswerSummary}</p>
+                                                </div>
+                                                <div class="bg-slate-50 p-3 lg:p-4 rounded-lg lg:rounded-xl border border-slate-100">
+                                                    <h5 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 lg:mb-2">AI Analysis (Marks Cut Reason)</h5>
+                                                    <p class="text-slate-800 text-xs lg:text-sm leading-relaxed">${qa.feedback}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+
+                         </div>
+                      </div>
+                   </div>
+                </div>
+            `;
+        }
+
+
+        // --- EVENT HANDLERS / CORE LOGIC (VAD, Mute, Terminate) ---
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('name').value.trim() || 'Candidate';
+            const jobDescription = document.getElementById('jd').value.trim();
+            const field = document.getElementById('field').value;
+            const language = document.getElementById('language').value;
+            const errorMsg = document.getElementById('form-error-message');
+
+            if (!field) {
+                errorMsg.textContent = "Please select a Role Title.";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+            if (jobDescription.length < 20) {
+                 errorMsg.textContent = "Please provide a more detailed Job Description/Context (min 20 characters).";
+                 errorMsg.classList.remove('hidden');
+                 return;
+            }
+            errorMsg.classList.add('hidden');
+
+            // FIX: Transition directly to the INTERVIEW step and call the start function.
+            updateState({ 
+                candidate: { name, jobDescription, field, language },
+                step: AppStep.INTERVIEW,
+                deviceStatus: 'Awaiting Permission...', // Reset status before trying to get mic access
+            });
+            
+            // Start the interview session immediately, which will handle device permissions.
+            startInterviewSession();
+        }
+
+
+        // Define endInterviewTool globally so it's available for the session config immediately
+        const endInterviewTool = {
+            name: 'endInterview',
+            description: 'Call this function ONLY when the interview is explicitly concluded by the model, or the candidate requests termination, or the interview reaches the question limit. This ends the session and triggers scoring.',
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    reason: {
+                        type: Type.STRING,
+                        description: 'The reason for ending the interview, e.g., "Completed" or "Candidate terminated".',
+                    },
+                },
+                required: ['reason'],
+            },
+        };
+
+        function drawVisualizer() {
+            const canvas = document.getElementById('audio-canvas');
+            const analyser = appState.analyser;
+            const mouth = document.getElementById('robot-mouth');
+            if (!canvas || !analyser || !mouth) return;
+            
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const resize = () => {
+                canvas.width = canvas.parentElement.clientWidth * dpr;
+                canvas.height = canvas.parentElement.clientHeight * dpr;
+                ctx.scale(dpr, dpr);
+            };
+            window.addEventListener('resize', resize);
+            resize();
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            let time = 0;
+            
+            const draw = () => {
+                appState.animationFrame = requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                
+                const width = canvas.width / dpr;
+                const height = canvas.height / dpr;
+                const centerY = height / 2;
+                time += 0.05;
+                ctx.clearRect(0, 0, width, height);
+                
+                let sum = 0;
+                for(let i = 0; i < bufferLength / 2; i++) sum += dataArray[i];
+                const avg = sum / (bufferLength / 2);
+                const volume = Math.min(1, avg / 50); 
+                
+                const baseRy = 2;  
+                const maxRy = 6;
+                const currentRy = baseRy + (volume * (maxRy - baseRy));
+                mouth.setAttribute('ry', currentRy.toFixed(2));
+
+                const waves = [
+                    { freq: 0.01, speed: 0.2, amp: 4, alpha: 1.0, width: 2 },
+                    { freq: 0.015, speed: 0.15, amp: 8, alpha: 0.4, width: 1 },
+                    { freq: 0.008, speed: 0.1, amp: 12, alpha: 0.1, width: 1 }
+                ];
+
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
+
+                waves.forEach((w) => {
+                    ctx.beginPath();
+                    ctx.strokeStyle = w.alpha === 1.0 ? 'rgba(255, 255, 255, 0.95)' : `rgba(255, 255, 255, ${w.alpha})`;
+                    ctx.lineWidth = w.width;
+                    
+                    const currentAmp = (w.amp * volume * 1.2) + (volume > 0.05 ? 2 : 1); 
+
+                    for (let x = 0; x < width; x++) {
+                        const y = centerY + Math.sin(x * w.freq + time * w.speed) * currentAmp;
+                        if (x === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                });
+                ctx.shadowBlur = 0;
+            };
+            draw();
+        }
+
+        function disconnectSession() {
+            if (appState.timerInterval) clearInterval(appState.timerInterval);
+            if (appState.silenceInterval) clearInterval(appState.silenceInterval);
+            if (appState.animationFrame) cancelAnimationFrame(appState.animationFrame);
+
+            if (appState.session) {
+                try { appState.session.close(); appState.session = null; } catch (e) { console.warn("Error closing session", e); }
+            }
+            
+            if (appState.stream) {
+                appState.stream.getTracks().forEach(track => track.stop());
+                appState.stream = null;
+            }
+            
+            if (appState.audioContext) { try { appState.audioContext.close(); appState.audioContext = null; } catch(e) {} }
+            if (appState.inputAudioContext) { try { appState.inputAudioContext.close(); appState.inputAudioContext = null; } catch(e) {} }
+
+            updateState({ 
+                isConnected: false,
+                isAiSpeaking: false,
+                isWaitingForResponse: false,
+                terminationTriggered: false
+            }, false);
+            
+            appState.nextAudioStartTime = 0;
+        }
+
+        function handleTermination(reason) {
+            if (appState.terminationTriggered) return;
+            appState.terminationTriggered = true;
+            
+            console.log(`Terminating Session: ${reason}`);
+            
+            const finalTranscript = appState.fullTranscriptHistory.join('\n');
+            
+            setTimeout(() => {
+                disconnectSession();
+                handleInterviewComplete(finalTranscript, reason);
+            }, 1000);
+        }
+
+        async function startInterviewSession() {
+            disconnectSession();
+            
+            const candidate = appState.candidate;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            
+            // FIX: Show a non-blocking warning if API key is missing or is the placeholder.
+            if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE") || GEMINI_API_KEY === "AIzaSyC81YWNH6dBwF67OYLDxjEHeeA--t5uv9g") {
+                alert("⚠️ WARNING: The Gemini API Key is missing or using a placeholder. The AI connection will likely fail with an error until a valid key is provided.");
+            }
+
+            try {
+                // --- DEVICE SETUP (Now combined and essential) ---
+                // 1. Get Microphone stream (This is the most critical step)
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: { channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true } 
+                });
+                appState.stream = stream;
+                updateState({ deviceStatus: 'Microphone Granted' }, false);
+
+                // 2. Setup Audio Contexts
+                const audioContext = new AudioContextClass({ sampleRate: 24000 }); 
+                appState.audioContext = audioContext;
+                await audioContext.resume();
+
+                const inputAudioContext = new AudioContextClass();
+                appState.inputAudioContext = inputAudioContext;
+                await inputAudioContext.resume();
+                const currentSampleRate = inputAudioContext.sampleRate;
+                
+                // 3. Setup Analyser for Visualizer
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.8;
+                appState.analyser = analyser;
+                analyser.connect(audioContext.destination);
+                drawVisualizer();
+
+                // 4. Setup ScriptProcessor for Microphone Input (VAD/PCM Encoding)
+                const source = inputAudioContext.createMediaStreamSource(stream);
+                const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
+                source.connect(scriptProcessor);
+                scriptProcessor.connect(inputAudioContext.destination);
+                // ----------------------------------------------------
+
+                const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+                const sessionPromise = ai.live.connect({
+                    model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+                    callbacks: {
+                        onopen: () => {
+                            updateState({ isConnected: true, isWaitingForResponse: false, fullTranscriptHistory: [], transcriptLines: [] }, true);
+                            appState.lastAiTurnEndTime = Date.now();
+                            appState.silenceWarningCount = 0;
+
+                            scriptProcessor.onaudioprocess = (e) => {
+                                if (!appState.isConnected) return;
+                                const inputData = e.inputBuffer.getChannelData(0).slice();
+                                let sum = inputData.reduce((acc, val) => acc + val * val, 0);
+                                const rms = Math.sqrt(sum / inputData.length);
+                                const detectionThreshold = 0.05;
+                                if (rms > detectionThreshold && !appState.isAiSpeaking) {
+                                    appState.isWaitingForResponse = false;
+                                    appState.isProcessingTimeout = false;
+                                    appState.silenceWarningCount = 0;
+                                }
+                                const downsampledData = AudioUtils.downsampleBuffer(inputData, currentSampleRate, 16000);
+                                if (downsampledData.length > 0) {
+                                    const pcmBlob = AudioUtils.createBlob(downsampledData, 16000);
+                                    sessionPromise.then(s => { if (appState.isConnected) s.sendRealtimeInput({ media: pcmBlob }); });
+                                }
+                            };
+                            
+                            sessionPromise.then(s => s.sendRealtimeInput({ text: "Begin the interview now." }));
+                        },
+                        onmessage: async (message) => {
+                            const hasContent = !!message.serverContent;
+                            const isTurnComplete = message.serverContent?.turnComplete;
+                            const toolCall = message.toolCall;
+
+                            if (toolCall) {
+                                const call = toolCall.functionCalls?.find(f => f.name === 'endInterview');
+                                if (call) handleTermination(call.args.reason || "Completed");
+                            }
+
+                            if (hasContent) updateState({ isAiSpeaking: true, isWaitingForResponse: false, isProcessingTimeout: false }, false);
+                            if (isTurnComplete) updateState({ isAiSpeaking: false, isWaitingForResponse: true, lastAiTurnEndTime: Date.now() }, false);
+
+                            // --- Transcript Handling ---
+                            if (message.serverContent?.modelTurn?.parts?.[0]?.text) {
+                                const text = message.serverContent.modelTurn.parts[0].text.trim();
+                                if (text) {
+                                    const lastLine = appState.transcriptLines[appState.transcriptLines.length - 1];
+                                    if (lastLine?.speaker === 'ai') lastLine.text += ' ' + text;
+                                    else appState.transcriptLines.push({ speaker: 'ai', text: text });
+                                    
+                                    if (appState.fullTranscriptHistory[appState.fullTranscriptHistory.length - 1]?.startsWith('AI:')) appState.fullTranscriptHistory[appState.fullTranscriptHistory.length - 1] += ' ' + text;
+                                    else appState.fullTranscriptHistory.push(`AI: ${text}`);
+
+                                    if (text.toLowerCase().includes("this concludes our interview")) {
+                                        setTimeout(() => { if (!appState.terminationTriggered) handleTermination("Completed (AI spoken conclusion detected)"); }, 1000);
+                                    }
+                                }
+                            }
+
+                            if (message.serverContent?.inputTranscription?.text) {
+                                const text = message.serverContent.inputTranscription.text;
+                                if (text) {
+                                    const lastLine = appState.transcriptLines[appState.transcriptLines.length - 1];
+                                    if (lastLine?.speaker === 'user') lastLine.text = text;
+                                    else appState.transcriptLines.push({ speaker: 'user', text: text });
+                                    
+                                    if (appState.fullTranscriptHistory[appState.fullTranscriptHistory.length - 1]?.startsWith('User:')) appState.fullTranscriptHistory[appState.fullTranscriptHistory.length - 1] = `User: ${text}`;
+                                    else appState.fullTranscriptHistory.push(`User: ${text}`);
+                                }
+                            }
+                            // --- End Transcript Handling ---
+
+
+                            if (message.serverContent?.modelTurn?.parts?.[0]?.inlineData) {
+                                const audioData = message.serverContent.modelTurn.parts[0].inlineData.data;
+                                if (audioData && audioContext) {
+                                    const buffer = await AudioUtils.decodeAudioData(AudioUtils.decode(audioData), audioContext, 24000, 1);
+                                    const source = audioContext.createBufferSource();
+                                    source.buffer = buffer;
+                                    source.connect(appState.analyser);
+                                    const now = audioContext.currentTime;
+                                    const startTime = Math.max(now, appState.nextAudioStartTime);
+                                    source.start(startTime);
+                                    appState.nextAudioStartTime = startTime + buffer.duration;
+                                }
+                            }
+                            
+                            // FIX: Re-render only for UI updates, not for every micro-audio chunk
+                            renderApp(); 
+                        },
+                        onerror: (e) => { 
+                            console.error("WebSocket Error:", e); 
+                            // Show error and explicitly tell the user about the API key.
+                            alert("FATAL ERROR: AI Interviewer failed to connect. This is usually due to a missing or invalid Gemini API Key.");
+                            updateState({ status: 'error' }, true); 
+                        },
+                        onclose: () => { if (appState.isConnected) updateState({ status: 'connecting' }, true); }
+                    },
+                    config: {
+                        responseModalities: ["AUDIO"], 
+                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
+                        tools: [{ functionDeclarations: [endInterviewTool] }],
+                        systemInstruction: {
+                            parts: [{
+                                text: `You are Interna, an expert AI technical interviewer. Your persona is highly professional, adaptive, and focused on rigorous technical and communication assessment.
+                                       Candidate Name: ${candidate.name}
+                                       Role: ${candidate.field}
+                                       Context: ${candidate.jobDescription.substring(0, 1000)}. Your questions MUST target these topics.
+                                       Language: ${candidate.language}. SPEAK ONLY IN ${candidate.language}.
+                                       
+                                       INTERNAL STATE: Question_Count = 0
+
+                                       CORE PROTOCOL (STRICTLY FOLLOW THIS):
+                                       1. **Introduction**: Start by welcoming the candidate and stating the role.
+                                       2. **Interview Loop (5 Questions MAX)**: Execute this loop exactly 5 times.
+                                          - **Ask**: Ask one technical or project-related question.
+                                          - **Count**: Immediately increment Question_Count (e.g., if you are on Q2, it becomes 3).
+                                          - **Adapt**:
+                                            - If candidate answers **accurately**: Acknowledge briefly ("Excellent point," "Correct") and ask a **HARDER** follow-up question.
+                                            - If candidate answers **incorrectly or vaguely**: Briefly correct or probe ("Actually, it is X...", "Can you elaborate?") and ask an **EASIER** follow-up question.
+                                       3. **Termination (MANDATORY)**:
+                                          - If Question_Count reaches 5 OR the candidate explicitly requests to stop:
+                                          - You MUST first say exactly: "This concludes our interview."
+                                          - THEN, you MUST call the 'endInterview' function with the reason "Completed".
+                                          - Do not speak or generate content after the function call.
+
+                                       SILENCE PROTOCOL (STRICT):
+                                       If you receive an internal text message starting with "System Alert:", you MUST follow these special instructions and ONLY use the requested phrase:
+                                       1. If alert says "Candidate is silent":
+                                          - Say exactly: "Please start answering when you’re ready."
+                                       2. If alert says "Candidate is still silent":
+                                          - TREAT THIS AS A WRONG/MISSED ANSWER.
+                                          - Say exactly: "I will continue to the next question." Then immediately ask the next question (this implicitly counts the previous one as failed).`
+                            }]
+                        },
+                        inputAudioTranscription: {},
+                        outputAudioTranscription: {}
+                    }
+                });
+                appState.session = await sessionPromise;
+                
+            } catch (e) {
+                console.error("Live Audio Initialization Error:", e);
+                if (appState.deviceStatus !== 'Microphone Granted') {
+                     alert("CRITICAL DEVICE ERROR: Could not access microphone. Please ensure permissions are granted and no other application is using the microphone.");
+                }
+                updateState({ status: 'error' }, true);
+            }
+        }
+
+
+        async function handleInterviewComplete(transcript, terminationReason) {
+            updateState({ step: AppStep.EVALUATING, result: null, terminationReason }, true);
+            generateScore(transcript, terminationReason);
+        }
+
+        async function generateScore(transcript, terminationReason) {
+            if (terminationReason && terminationReason !== "Completed" && terminationReason !== "Completed (AI spoken conclusion detected)") {
+                setTimeout(() => {
+                    updateState({ 
+                        result: { rating: 0, feedback: "Interview terminated early due to security or time violation.", passed: false, questions: [], terminationReason },
+                        step: AppStep.RESULT 
+                    });
+                }, 1500);
+                return;
+            }
+
+            try {
+                const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+                
+                const prompt = `
+                    You are a Senior Hiring Manager evaluating a technical and communication interview.
+                    
+                    Candidate: ${appState.candidate.name}
+                    Role: ${appState.candidate.field}
+                    Job Description: ${appState.candidate.jobDescription}
+                    Interview Language: ${appState.candidate.language}
+                    
+                    TRANSCRIPT:
+                    ---
+                    ${transcript}
+                    ---
+                    
+                    TASK: Generate the assessment in pure JSON following the schema.
+                    
+                    1. Analyze the technical accuracy, clarity, and communication style.
+                    2. **STRICT MARKING**: The overall rating (1-10) and per-question ratings (1-10) must be **genuinely reflective** of performance. A score of 7 or above is a pass.
+                    3. **Question Structure (5 MANDATORY)**: Identify exactly 5 distinct Q&A segments (questions asked by the AI and answered by the candidate). If the transcript has fewer, deduce the best 5. For each question:
+                       - **question**: The full text of the question asked by the AI.
+                       - **candidateAnswerSummary**: A concise summary of the candidate's response. Use "[No Answer - Time Limit Exceeded]" for silence penalties.
+                       - **rating**: An integer score from 1 to 10.
+                       - **feedback**: **CRITICAL**: Detailed, professional explanation (1-2 sentences) of the rating. **Explicitly state what was missing or incorrect, and why marks were deducted.**
+
+                    Output pure JSON.
+                `;
+
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: prompt,
+                    config: {
+                        responseMimeType: 'application/json',
+                        responseSchema: {
+                            type: Type.OBJECT,
+                            properties: {
+                                rating: { type: Type.INTEGER },
+                                feedback: { type: Type.STRING },
+                                questions: {
+                                    type: Type.ARRAY,
+                                    items: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            question: { type: Type.STRING },
+                                            candidateAnswerSummary: { type: Type.STRING },
+                                            rating: { type: Type.INTEGER },
+                                            feedback: { type: Type.STRING } 
+                                        },
+                                        required: ['question', 'candidateAnswerSummary', 'rating', 'feedback']
+                                    }
+                                }
+                            },
+                            required: ['rating', 'feedback', 'questions']
+                        }
+                    }
+                });
+
+                const data = JSON.parse(response.text.trim());
+                updateState({ 
+                    result: { 
+                        rating: data.rating || 0,
+                        feedback: data.feedback || "No feedback provided.",
+                        passed: (data.rating || 0) > 6,
+                        questions: data.questions || []
+                    },
+                    step: AppStep.RESULT 
+                });
+
+            } catch (error) {
+                console.error("Evaluation failed", error);
+                updateState({
+                    result: { rating: 0, feedback: "An API error prevented score generation.", passed: false, questions: [] },
+                    step: AppStep.RESULT
+                });
+            }
+        }
+
+        function toggleMute() {
+            if (appState.stream) {
+                const isMuted = !appState.isMuted;
+                appState.stream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+                updateState({ isMuted }, true);
+            }
+        }
+
+        function resetApp() {
+            disconnectSession();
+            updateState({
+                step: AppStep.FORM,
+                candidate: { name: '', jobDescription: '', field: '', language: '' },
+                result: null,
+                session: null,
+                stream: null,
+                audioContext: null,
+                inputAudioContext: null,
+                analyser: null,
+                animationFrame: 0,
+                isConnected: false,
+                nextAudioStartTime: 0,
+                fullTranscriptHistory: [],
+                terminationTriggered: false,
+                isAiSpeaking: false,
+                isWaitingForResponse: false,
+                lastAiTurnEndTime: 0,
+                isProcessingTimeout: false,
+                silenceWarningCount: 0,
+                timeLeft: 600,
+                showTranscript: false,
+                activeTab: 'qa',
+                deviceStatus: 'Awaiting Permission...',
+                networkQuality: 'checking',
+                latencyMs: 0,
+                noiseStatus: 'checking',
+            });
+        }
+
+
+        // --- LIFECYCLE / INIT ---
+        (function initializeApp() {
+            window.handleTermination = handleTermination;
+            
+            // Initial Render - This MUST work to show the form
+            renderApp();
+            
+            // Start the silent timeout loop
+            appState.silenceInterval = setInterval(() => {
+                if (!appState.isConnected || appState.terminationTriggered || appState.isAiSpeaking || !appState.isWaitingForResponse) return;
+                
+                const now = Date.now();
+                const timeSinceAiFinished = now - appState.lastAiTurnEndTime;
+                
+                if (timeSinceAiFinished > 10000 && !appState.isProcessingTimeout) {
+                    appState.isProcessingTimeout = true;
+                    appState.silenceWarningCount += 1;
+
+                    if (appState.silenceWarningCount > 2) {
+                         const silentEntry = "[No Answer - Time Limit Exceeded]";
+                         appState.transcriptLines.push({ speaker: 'user', text: silentEntry });
+                         appState.fullTranscriptHistory.push(`User: ${silentEntry}`);
+                         
+                         appState.silenceWarningCount = 0;
+
+                         appState.session.sendRealtimeInput({ text: "System Alert: Candidate is still silent. Treat this as a failed answer. Say exactly: 'I will continue to the next question.' and ask the next question." });
+                    } else {
+                         appState.session.sendRealtimeInput({ text: "System Alert: Candidate is silent. Say exactly: 'Please start answering when you’re ready.'" });
+                    }
+                }
+            }, 1000);
+        })();
+    </script>
 </body>
 </html>
