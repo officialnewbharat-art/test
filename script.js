@@ -25,7 +25,6 @@ const AudioUtils = {
         return btoa(binary);
     },
     decode: (base64) => {
-        // FIX: Corrected syntax error which caused global script crash
         const binaryString = atob(base64); 
         const len = binaryString.length;
         const bytes = new Uint8Array(len);
@@ -178,6 +177,7 @@ function renderApp() {
 
     // Re-attach listeners
     if (currentStep === AppStep.FORM) {
+        // FIX: Ensure listener is attached to the form submit event
         document.getElementById('candidate-form')?.addEventListener('submit', handleFormSubmit);
     } 
     else if (currentStep === AppStep.INTERVIEW) {
