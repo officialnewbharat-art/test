@@ -5,7 +5,7 @@ import { GoogleGenAI, Type } from 'https://aistudiocdn.com/@google/genai@^1.30.0
 // ===============================================
 // 🚨 IMPORTANT: PASTE YOUR GEMINI API KEY HERE 🚨
 // ===============================================
-const GEMINI_API_KEY = "AIzaSyC81YWNH6dBwF67OYLDxjEHeeA--t5uv9g"; 
+const GEMINI_API_KEY = "AIzaSyBQyqNkSovVFJheZunhqOJE0-7h7JyXEls"; 
 // ===============================================
 
 // --- TYPES & CONSTANTS ---
