@@ -138,7 +138,7 @@ function renderApp() {
     const logoColorClass = isLightBackground ? 'text-indigo-600' : 'text-indigo-400';
     const logoElement = `
         <div class="flex items-center gap-2 md:gap-3 pointer-events-auto">
-            <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgxLjgtMy4yLjIgMi4xLS4zIDQuOSAwIDUuNTV6bS0zIDMuNWMtLjQuNi0xLjQuOS0xLjctLjEtLjMuOC0uNiAxLjgtLjYgLjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMgMi40IDB6Ii8+PC9zdmc+'">
+            <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgMS44LTMuMi4yIDIuMS0uMyA0LjkgMCA1LjU1em0tMyAzLjVjLS40LjYtMS40LjktMS43LS4xLS4zLjgtLjYgMS44LS42LjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMgMi40IDB6Ii8+PC9zdmc+'">
             <h1 class="text-lg md:text-xl font-bold tracking-tight ${isLightBackground ? 'text-slate-900' : 'text-white'}">
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">Interna</span>
                 <span class="${logoColorClass}">.ai</span>
@@ -342,9 +342,9 @@ function renderInstructions() {
                           </div>
                        </div>
 
-                       <button id="permission-btn" ${status === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad' ? '' : 'disabled'}
+                       <button id="permission-btn" ${status === 'Microphone Granted' && appState.networkQuality !== 'poor' && (appState.noiseStatus === 'good' || appState.noiseStatus === 'fair') ? '' : 'disabled'}
                          class="w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-between px-6 lg:px-8 ${
-                           status === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad'
+                           status === 'Microphone Granted' && appState.networkQuality !== 'poor' && (appState.noiseStatus === 'good' || appState.noiseStatus === 'fair')
                            ? 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-indigo-200 cursor-pointer transform hover:-translate-y-1' 
                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                          }"
@@ -743,7 +743,10 @@ function updateInstructionsUI() {
     const status = appState.deviceStatus;
     const netUI = getNetworkUI(appState.latencyMs);
     const noiseUI = getNoiseUI(appState.noiseStatus);
-    const canStart = status === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad';
+    
+    // FIX: Relaxed Noise check: 'good' (quiet) OR 'fair' (acceptable) is now allowed.
+    const isNoiseAcceptable = appState.noiseStatus === 'good' || appState.noiseStatus === 'fair';
+    const canStart = status === 'Microphone Granted' && appState.networkQuality !== 'poor' && isNoiseAcceptable;
 
     if (micContainer && micLabel) {
         micLabel.textContent = status;
@@ -769,7 +772,6 @@ function updateInstructionsUI() {
     if (permissionBtn) {
         permissionBtn.disabled = !canStart;
         
-        // This is complex, so updating innerHTML for the button is reasonable
         permissionBtn.innerHTML = `
             <span>${status === 'Awaiting Permission...' ? 'Request Microphone Access' : 'Accept & Begin Interview'}</span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6">
@@ -879,11 +881,11 @@ async function checkInitialDeviceStatus() {
 }
 
 async function checkPermissionsAndStartInterview() {
-    // FIX: Check current state of button eligibility directly
-    const canStart = appState.deviceStatus === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad';
+    // FIX: Relaxed check to allow 'fair' noise status
+    const canStart = appState.deviceStatus === 'Microphone Granted' && appState.networkQuality !== 'poor' && (appState.noiseStatus === 'good' || appState.noiseStatus === 'fair');
 
     if (!canStart) {
-        alert("Please ensure Microphone Access is granted and network/noise checks are acceptable before starting.");
+        alert("Please ensure Microphone Access is granted and network is not poor. Noise level must be Quiet or Fair to proceed.");
         return;
     }
 
@@ -899,6 +901,21 @@ async function checkPermissionsAndStartInterview() {
 // --- INTERVIEW SESSION CORE LOGIC (VAD, AI, Tooling) ---
 
 // [Rest of the logic: drawVisualizer, disconnectSession, handleTermination, startInterviewSession, handleInterviewComplete, generateScore, toggleMute, resetApp remain unchanged from the previous robust implementation.]
+
+const endInterviewTool = {
+    name: 'endInterview',
+    description: 'Call this function ONLY when the interview is explicitly concluded by the model, or the candidate requests termination, or the interview reaches the question limit. This ends the session and triggers scoring.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            reason: {
+                type: Type.STRING,
+                description: 'The reason for ending the interview, e.g., "Completed" or "Candidate terminated".',
+            },
+        },
+        required: ['reason'],
+    },
+};
 
 function drawVisualizer() {
     const canvas = document.getElementById('audio-canvas');
