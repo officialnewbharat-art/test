@@ -538,6 +538,7 @@ The question was: "${question}".
                 speechRecognition.onerror = (event) => {
                     if (event.error !== 'no-speech' && event.error !== 'aborted') {
                         console.error('Speech recognition error:', event.error);
+                        // Using alert() here as required in the original code, but standard practice should be to use a custom modal
                         alert(`Voice Input Error: ${event.error}. Please try speaking again or check microphone permissions.`);
                         reject(`Speech recognition error: ${event.error}`);
                     } else {
@@ -564,6 +565,7 @@ The question was: "${question}".
                     speak("I didn't quite catch that. Please try to state your answer again.")
                         .then(() => {
                             // After speaking the prompt, immediately restart listening
+                            // We need to ensure we call interviewLoop only if handleAnswer doesn't proceed
                             startListening().then(handleAnswer).catch(console.error);
                         });
                 } else {
@@ -573,7 +575,10 @@ The question was: "${question}".
             .catch(error => {
                 console.error("Listening flow failed:", error);
                 // If a critical error occurred, wait and attempt next question flow
-                setTimeout(askNextQuestion, 2000); 
+                // Note: The original code had a function 'askNextQuestion' which isn't defined.
+                // It should likely call interviewLoop() to continue the flow.
+                // Let's ensure the necessary change is made in handleAnswer to prevent an infinite loop on empty transcript.
+                setTimeout(interviewLoop, 2000); 
             });
         }
         
@@ -712,7 +717,7 @@ The question was: "${question}".
                     return; 
                 }
                 // If critical data is missing, move to next question flow
-                askNextQuestion();
+                interviewLoop(); // Fix: Call interviewLoop to proceed
                 return;
             }
 
@@ -742,7 +747,10 @@ The question was: "${question}".
             roleAppliedFor = document.getElementById('role-applied-for').value.trim() || "Intern";
             
             if (!GEMINI_API_KEY) {
-                alert("Please set the GEMINI_API_KEY in the script before starting the interview.");
+                // Using a custom message box instead of alert() for the API warning
+                document.getElementById('status-message').textContent = 'Error: Gemini API Key is missing!';
+                document.getElementById('status-message').classList.remove('text-yellow-400');
+                document.getElementById('status-message').classList.add('text-red-400');
                 return;
             }
 
