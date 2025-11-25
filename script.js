@@ -11,7 +11,7 @@ const GEMINI_API_KEY = "AIzaSyC5Cr8zfgd0yr7AwsqK4smq8-RJin2S9ng";
 // --- TYPES & CONSTANTS ---
 const AppStep = {
     FORM: 'FORM',
-    INSTRUCTIONS: 'INSTRUCTIONS',
+    // INSTRUCTIONS step removed as per user request.
     INTERVIEW: 'INTERVIEW',
     EVALUATING: 'EVALUATING',
     RESULT: 'RESULT',
@@ -101,7 +101,7 @@ let appState = {
     // UI States
     showTranscript: false,
     activeTab: 'qa', 
-    deviceStatus: 'Awaiting Permission...',
+    deviceStatus: 'Awaiting Permission...', // Retained for debug info in startInterviewSession
     networkQuality: 'checking',
     latencyMs: 0,
     noiseStatus: 'checking',
@@ -124,11 +124,12 @@ function renderApp() {
 
     // --- Header & Logo Setup ---
     const showHeader = currentStep !== AppStep.INTERVIEW;
-    const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM || currentStep === AppStep.INSTRUCTIONS;
+    // FIX: Removed INSTRUCTIONS from light background check
+    const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM; 
     
     const steps = [
         { id: AppStep.FORM, label: 'Profile' },
-        { id: AppStep.INSTRUCTIONS, label: 'Check' },
+        // { id: AppStep.INSTRUCTIONS, label: 'Check' }, // Removed from flow
         { id: AppStep.INTERVIEW, label: 'Live' },
         { id: AppStep.EVALUATING, label: 'Review' },
         { id: AppStep.RESULT, label: 'Result' },
@@ -170,7 +171,6 @@ function renderApp() {
     
     // --- Content Rendering ---
     if (currentStep === AppStep.FORM) html = renderCandidateForm();
-    else if (currentStep === AppStep.INSTRUCTIONS) html = renderInstructions();
     else if (currentStep === AppStep.INTERVIEW) html = renderInterviewSession();
     else if (currentStep === AppStep.EVALUATING) html = renderEvaluatingScreen();
     else if (currentStep === AppStep.RESULT) html = renderResultScreen();
@@ -180,11 +180,8 @@ function renderApp() {
     // Re-attach listeners
     if (currentStep === AppStep.FORM) {
         document.getElementById('candidate-form')?.addEventListener('submit', handleFormSubmit);
-    } else if (currentStep === AppStep.INSTRUCTIONS) {
-        // We re-render Instructions, so we must also call a UI update right after to ensure initial state is correct and the interval updates can find the elements
-        updateInstructionsUI(); 
-        document.getElementById('permission-btn')?.addEventListener('click', checkPermissionsAndStartInterview);
-    } else if (currentStep === AppStep.INTERVIEW) {
+    } 
+    else if (currentStep === AppStep.INTERVIEW) {
         const muteBtn = document.getElementById('mute-btn');
         if (muteBtn) muteBtn.onclick = toggleMute;
         const transcriptBtn = document.getElementById('transcript-btn');
@@ -278,92 +275,7 @@ function renderCandidateForm() {
     `;
 }
 
-// --- RENDER INSTRUCTIONS SCREEN ---
-function renderInstructions() {
-    const status = appState.deviceStatus;
-    const netUI = getNetworkUI(appState.latencyMs);
-    const noiseUI = getNoiseUI(appState.noiseStatus);
-
-    return `
-        <div class="flex flex-col lg:grid lg:grid-cols-12 h-full w-full animate-fadeIn">
-            <div class="lg:col-span-7 bg-interna-dark relative flex flex-col items-center justify-center overflow-hidden h-[40vh] lg:h-full shrink-0">
-               <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950"></div>
-               
-               <div class="w-full h-full relative z-10 flex flex-col items-center justify-center p-8">
-                   <div class="text-center p-8 bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-slate-800 shadow-xl max-w-lg">
-                      <div class="w-16 h-16 lg:w-20 lg:h-20 bg-indigo-500/10 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
-                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" class="w-8 h-8 lg:w-10 lg:h-10">
-                           <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75A2.25 2.25 0 0015.75 1.5H13.5m-3 0V3h3V1.5h-3zm-1.5 16.5H12a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5z" />
-                         </svg>
-                      </div>
-                      <h3 class="text-white font-bold text-lg lg:text-xl mb-2">Device & Environment Status</h3>
-                      <p class="text-slate-400 max-w-xs lg:max-w-sm mx-auto text-sm">We are checking your microphone and network stability for the voice interview.</p>
-                      
-                      <div class="mt-6 space-y-3">
-                          <div id="mic-status-container" class="flex items-center justify-between p-3 rounded-lg ${appState.deviceStatus === 'Microphone Granted' ? 'bg-emerald-500/20' : 'bg-rose-500/20'} border ${appState.deviceStatus === 'Microphone Granted' ? 'border-emerald-500/30' : 'border-rose-500/30'}">
-                              <span class="text-sm font-medium ${appState.deviceStatus === 'Microphone Granted' ? 'text-emerald-400' : 'text-rose-400'}" id="mic-status-label">${status}</span>
-                              <span class="text-xs text-slate-400">${appState.deviceStatus === 'Awaiting Permission...' ? 'Request Access below' : ''}</span>
-                          </div>
-                          <div id="net-status-container" class="flex items-center justify-between p-3 rounded-lg ${netUI.bg} ${netUI.border}">
-                              <span class="text-sm font-medium ${netUI.color}">${netUI.label} (${appState.latencyMs}ms)</span>
-                              <span class="text-xs text-slate-400">${netUI.desc}</span>
-                          </div>
-                          <div id="noise-status-container" class="flex items-center justify-between p-3 rounded-lg ${noiseUI.bg} ${noiseUI.border}">
-                              <span class="text-sm font-medium ${noiseUI.color}">${noiseUI.label}</span>
-                              <span class="text-xs text-slate-400">${noiseUI.desc}</span>
-                          </div>
-                      </div>
-                   </div>
-               </div>
-            </div>
-
-            <div class="lg:col-span-5 bg-white flex flex-col flex-1 overflow-y-auto relative shadow-2xl z-20 rounded-t-3xl lg:rounded-none -mt-6 lg:mt-0">
-               <div class="flex-1 p-8 lg:p-16 flex flex-col justify-center">
-                   <div class="max-w-md mx-auto w-full">
-                       <div class="mb-6 lg:mb-8">
-                          <h2 class="text-2xl lg:text-3xl font-bold text-slate-900">Assessment Protocol</h2>
-                          <p class="text-slate-500 mt-2 text-base lg:text-lg">Please adhere to all rules to maintain fairness.</p>
-                       </div>
-
-                       <div class="space-y-4 lg:space-y-6 mb-8 lg:mb-10">
-                          <div class="bg-indigo-50 rounded-2xl p-5 lg:p-6 border border-indigo-100">
-                             <h3 class="font-bold text-indigo-900 mb-3 lg:mb-4 text-xs lg:text-sm uppercase tracking-wide flex items-center gap-2">
-                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
-                                 Integrity Rules
-                             </h3>
-                             <ul class="space-y-3">
-                                ${["Switching tabs will trigger a violation.", "Microphone must remain enabled and unmuted.", "Do not use external resources or people.", "Ensure your environment is silent (Noise check above)."].map((item, i) => `
-                                   <li key=${i} class="flex items-start gap-3 text-sm text-indigo-800 font-medium">
-                                      <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0"></span>
-                                      <span>${item}</span>
-                                   </li>
-                                `).join('')}
-                             </ul>
-                          </div>
-                       </div>
-                       
-                       <p id="noise-warning-message" class="text-center text-xs text-amber-500 font-bold mt-3 ${appState.noiseStatus === 'fair' ? '' : 'hidden'}">Warning: Non-ideal conditions. Proceeding may affect transcription accuracy.</p>
-                       
-                       <button id="permission-btn" ${appState.deviceStatus === 'Microphone Granted' ? '' : 'disabled'}
-                         class="w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-between px-6 lg:px-8 ${
-                           appState.deviceStatus === 'Microphone Granted'
-                           ? 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-indigo-200 cursor-pointer transform hover:-translate-y-1' 
-                           : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                         }"
-                       >
-                         <span>${status === 'Awaiting Permission...' ? 'Request Microphone Access' : 'Accept & Begin Interview'}</span>
-                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6">
-                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-                         </svg>
-                       </button>
-                       <p id="noise-error-message" class="text-center text-xs text-rose-500 font-bold mt-3 ${appState.noiseStatus === 'bad' ? '' : 'hidden'}">Cannot start: Environment is too noisy. Please ensure silence.</p>
-                       <p id="mic-denied-message" class="text-center text-xs text-rose-500 font-bold mt-3 ${status === 'Microphone Denied' ? '' : 'hidden'}">Microphone access denied. Please allow permission to continue.</p>
-                   </div>
-               </div>
-            </div>
-        </div>
-    `;
-}
+// FIX: renderInstructions() is completely removed.
 
 // --- RENDER INTERVIEW SESSION (omitted for brevity) ---
 function renderInterviewSession() {
@@ -704,346 +616,19 @@ function handleFormSubmit(e) {
     }
     errorMsg.classList.add('hidden');
 
+    // FIX: Transition directly to the INTERVIEW step and call the start function.
     updateState({ 
         candidate: { name, jobDescription, field, language },
-        step: AppStep.INSTRUCTIONS,
-        deviceStatus: 'Awaiting Permission...',
-        networkQuality: 'checking',
-        latencyMs: 0,
-        noiseStatus: 'checking',
+        step: AppStep.INTERVIEW,
+        deviceStatus: 'Awaiting Permission...', // Reset status before trying to get mic access
     });
     
-    checkInitialDeviceStatus();
-}
-
-function getNetworkUI(latencyMs) {
-    if (latencyMs === 0) return { color: 'text-slate-400', bg: 'bg-slate-500/20', border: 'border-slate-500/30', label: 'Net: Testing...', desc: 'Testing connectivity...' };
-    if (latencyMs < 150) return { color: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/30', label: 'Net: Optimal', desc: 'Interna will respond instantly.' };
-    if (latencyMs < 400) return { color: 'text-amber-400', bg: 'bg-amber-500/20', border: 'border-amber-500/30', label: 'Net: Stable', desc: 'Slight delays possible.' };
-    return { color: 'text-rose-400', bg: 'bg-rose-500/20', border: 'border-rose-500/30', label: 'Net: Weak', desc: 'Connection slow. Interna may lag.' };
-}
-
-function getNoiseUI(noiseStatus) {
-    if (noiseStatus === 'good') return { color: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/30', label: 'Noise: Quiet', desc: 'Ideal environment.' };
-    if (noiseStatus === 'fair') return { color: 'text-amber-400', bg: 'bg-amber-500/20', border: 'border-amber-500/30', label: 'Noise: Fair', desc: 'Acceptable but distracting.' };
-    if (noiseStatus === 'bad') return { color: 'text-rose-400', bg: 'bg-rose-500/20', border: 'border-rose-500/30', label: 'Noise: Loud', desc: 'Requires silence.' };
-    return { color: 'text-slate-400', bg: 'bg-slate-500/20', border: 'border-slate-500/30', label: 'Noise: Testing...', desc: 'Testing environment...' };
-}
-
-// FIX: New function for direct DOM updates on the Instructions screen to prevent flickering
-function updateInstructionsUI() {
-    if (appState.step !== AppStep.INSTRUCTIONS) return;
-
-    const micContainer = document.getElementById('mic-status-container');
-    const micLabel = document.getElementById('mic-status-label');
-    const permissionBtn = document.getElementById('permission-btn');
-    const netContainer = document.getElementById('net-status-container');
-    const noiseContainer = document.getElementById('noise-status-container');
-    const noiseMsg = document.getElementById('noise-error-message');
-    const micDeniedMsg = document.getElementById('mic-denied-message');
-    const noiseWarningMsg = document.getElementById('noise-warning-message'); // New warning message
-
-    const status = appState.deviceStatus;
-    const netUI = getNetworkUI(appState.latencyMs);
-    const noiseUI = getNoiseUI(appState.noiseStatus);
-    
-    // FIX: The button is now enabled simply if the Microphone is granted. 
-    // This allows the user to proceed even with weak network/fair noise.
-    const isMicGranted = status === 'Microphone Granted';
-    const canStart = isMicGranted;
-
-    if (micContainer && micLabel) {
-        micLabel.textContent = status;
-        micContainer.className = `flex items-center justify-between p-3 rounded-lg ${status === 'Microphone Granted' ? 'bg-emerald-500/20' : 'bg-rose-500/20'} border ${status === 'Microphone Granted' ? 'border-emerald-500/30' : 'border-rose-500/30'}`;
-        micLabel.className = `text-sm font-medium ${status === 'Microphone Granted' ? 'text-emerald-400' : 'text-rose-400'}`;
-        micLabel.nextElementSibling.textContent = status === 'Awaiting Permission...' ? 'Request Access below' : '';
-    }
-
-    if (netContainer) {
-        netContainer.className = `flex items-center justify-between p-3 rounded-lg ${netUI.bg} ${netUI.border}`;
-        netContainer.querySelector('span:first-child').className = `text-sm font-medium ${netUI.color}`;
-        netContainer.querySelector('span:first-child').textContent = `${netUI.label} (${appState.latencyMs}ms)`;
-        netContainer.querySelector('span:last-child').textContent = netUI.desc;
-    }
-
-    if (noiseContainer) {
-        noiseContainer.className = `flex items-center justify-between p-3 rounded-lg ${noiseUI.bg} ${noiseUI.border}`;
-        noiseContainer.querySelector('span:first-child').className = `text-sm font-medium ${noiseUI.color}`;
-        noiseContainer.querySelector('span:first-child').textContent = noiseUI.label;
-        noiseContainer.querySelector('span:last-child').textContent = noiseUI.desc;
-    }
-
-    if (permissionBtn) {
-        permissionBtn.disabled = !canStart;
-        
-        permissionBtn.innerHTML = `
-            <span>${status === 'Awaiting Permission...' ? 'Request Microphone Access' : 'Accept & Begin Interview'}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-            </svg>
-        `;
-        permissionBtn.className = `w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-between px-6 lg:px-8 ${
-            canStart
-            ? 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-indigo-200 cursor-pointer transform hover:-translate-y-1' 
-            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-        }`;
-    }
-    
-    // Display error messages only for critical failures (Denied Mic or Loud Noise)
-    if (noiseMsg) noiseMsg.classList.toggle('hidden', appState.noiseStatus !== 'bad');
-    if (micDeniedMsg) micDeniedMsg.classList.toggle('hidden', appState.deviceStatus !== 'Microphone Denied');
-
-    // Display warning for non-ideal conditions, but allow start
-    if (noiseWarningMsg) {
-        const isNonIdeal = appState.networkQuality === 'poor' || appState.noiseStatus === 'fair';
-        noiseWarningMsg.classList.toggle('hidden', !isNonIdeal);
-        if (isNonIdeal) {
-            let msg = "Warning: Non-ideal conditions. Proceeding may affect transcription accuracy.";
-            if (appState.networkQuality === 'poor') msg = "Warning: Network is weak. Expect lag and slower AI responses.";
-            if (appState.noiseStatus === 'fair') msg = "Warning: Noise is fair. Please keep silence for best transcription quality.";
-            if (appState.networkQuality === 'poor' && appState.noiseStatus === 'fair') msg = "Warning: Network is weak and noise is fair. Quality may be affected.";
-            noiseWarningMsg.textContent = msg;
-        }
-    }
-}
-
-
-async function checkNetworkSpeed() {
-    const start = Date.now();
-    let duration = 999;
-    try {
-        await fetch('https://www.google.com/favicon.ico?' + start, { mode: 'no-cors', cache: 'no-store' });
-        duration = Date.now() - start;
-    } catch (e) {
-        duration = 999;
-    }
-
-    let quality = 'poor';
-    if (duration < 150) quality = 'excellent';
-    else if (duration < 400) quality = 'fair';
-
-    // FIX: Update state without full re-render, then call direct UI update
-    if (appState.step === AppStep.INSTRUCTIONS) {
-        Object.assign(appState, { networkQuality: quality, latencyMs: duration });
-        updateInstructionsUI();
-    } else {
-         Object.assign(appState, { networkQuality: quality, latencyMs: duration });
-    }
-}
-
-function handleAudioInput(stream) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    const audioContext = new AudioContextClass();
-    const analyser = audioContext.createAnalyser();
-    const microphone = audioContext.createMediaStreamSource(stream);
-    
-    analyser.fftSize = 512;
-    microphone.connect(analyser);
-    
-    let frameCount = 0;
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    
-    const checkNoise = () => {
-        appState.animationFrame = requestAnimationFrame(checkNoise);
-        analyser.getByteFrequencyData(dataArray);
-        
-        let sum = 0;
-        for(let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-        
-        frameCount++;
-        if (frameCount % 30 === 0) {
-            const averageVolume = sum / dataArray.length;
-            
-            let noiseStatus = 'checking';
-            if (averageVolume < 10) noiseStatus = 'good';
-            else if (averageVolume < 30) noiseStatus = 'fair';
-            else noiseStatus = 'bad';
-            
-            // FIX: Update state without full re-render, then call direct UI update
-            if (appState.step === AppStep.INSTRUCTIONS) {
-                Object.assign(appState, { noiseStatus });
-                updateInstructionsUI();
-            } else {
-                Object.assign(appState, { noiseStatus });
-            }
-        }
-    };
-    checkNoise();
-    
-    if (appState.stream) appState.stream.getTracks().forEach(track => track.stop());
-    if (appState.analyser) cancelAnimationFrame(appState.analyser);
-    
-    updateState({ stream, analyser: analyser });
-}
-
-async function checkInitialDeviceStatus() {
-    updateState({ deviceStatus: 'Requesting Permission...' }, appState.step === AppStep.INSTRUCTIONS);
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // FIX: Update state and call direct UI update to re-enable button without flickering
-        Object.assign(appState, { deviceStatus: 'Microphone Granted' });
-        updateInstructionsUI(); 
-        
-        handleAudioInput(stream); 
-
-        checkNetworkSpeed();
-        setInterval(checkNetworkSpeed, 5000);
-
-    } catch (error) {
-        console.error("Media error", error);
-        // FIX: Update state and call direct UI update to update UI and keep button disabled without flickering
-        Object.assign(appState, { deviceStatus: 'Microphone Denied', noiseStatus: 'bad' });
-        updateInstructionsUI();
-    }
-}
-
-async function checkPermissionsAndStartInterview() {
-    // FIX: Only check for Microphone Granted. If granted, proceed immediately.
-    const isMicGranted = appState.deviceStatus === 'Microphone Granted';
-
-    if (!isMicGranted) {
-        alert("CRITICAL ERROR: Please grant Microphone Access to begin the interview.");
-        return;
-    }
-
-    // FIX: Show a non-blocking warning if API key is missing or is the placeholder.
-    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE") || GEMINI_API_KEY === "AIzaSyC81YWNH6dBwF67OYLDxjEHeeA--t5uv9g") {
-        alert("⚠️ WARNING: The Gemini API Key is missing or using a placeholder. The interview screen will load, but the AI connection will likely fail with an error until a valid key is provided.");
-    }
-    
-    // FIX: Immediate state change to guarantee screen transition (Interview Screen)
-    updateState({ step: AppStep.INTERVIEW }); 
-    
-    // Proceed to start the session.
+    // Start the interview session immediately, which will handle device permissions.
     startInterviewSession();
 }
 
-// --- INTERVIEW SESSION CORE LOGIC (VAD, AI, Tooling) ---
-
-const endInterviewTool = {
-    name: 'endInterview',
-    description: 'Call this function ONLY when the interview is explicitly concluded by the model, or the candidate requests termination, or the interview reaches the question limit. This ends the session and triggers scoring.',
-    parameters: {
-        type: Type.OBJECT,
-        properties: {
-            reason: {
-                type: Type.STRING,
-                description: 'The reason for ending the interview, e.g., "Completed" or "Candidate terminated".',
-            },
-        },
-        required: ['reason'],
-    },
-};
-
-function drawVisualizer() {
-    const canvas = document.getElementById('audio-canvas');
-    const analyser = appState.analyser;
-    const mouth = document.getElementById('robot-mouth');
-    if (!canvas || !analyser || !mouth) return;
-    
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    const resize = () => {
-        canvas.width = canvas.parentElement.clientWidth * dpr;
-        canvas.height = canvas.parentElement.clientHeight * dpr;
-        ctx.scale(dpr, dpr);
-    };
-    window.addEventListener('resize', resize);
-    resize();
-    
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    let time = 0;
-    
-    const draw = () => {
-        appState.animationFrame = requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(dataArray);
-        
-        const width = canvas.width / dpr;
-        const height = canvas.height / dpr;
-        const centerY = height / 2;
-        time += 0.05;
-        ctx.clearRect(0, 0, width, height);
-        
-        let sum = 0;
-        for(let i = 0; i < bufferLength / 2; i++) sum += dataArray[i];
-        const avg = sum / (bufferLength / 2);
-        const volume = Math.min(1, avg / 50); 
-        
-        const baseRy = 2;  
-        const maxRy = 6;
-        const currentRy = baseRy + (volume * (maxRy - baseRy));
-        mouth.setAttribute('ry', currentRy.toFixed(2));
-
-        const waves = [
-            { freq: 0.01, speed: 0.2, amp: 4, alpha: 1.0, width: 2 },
-            { freq: 0.015, speed: 0.15, amp: 8, alpha: 0.4, width: 1 },
-            { freq: 0.008, speed: 0.1, amp: 12, alpha: 0.1, width: 1 }
-        ];
-
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
-
-        waves.forEach((w) => {
-            ctx.beginPath();
-            ctx.strokeStyle = w.alpha === 1.0 ? 'rgba(255, 255, 255, 0.95)' : `rgba(255, 255, 255, ${w.alpha})`;
-            ctx.lineWidth = w.width;
-            
-            const currentAmp = (w.amp * volume * 1.2) + (volume > 0.05 ? 2 : 1); 
-
-            for (let x = 0; x < width; x++) {
-                const y = centerY + Math.sin(x * w.freq + time * w.speed) * currentAmp;
-                if (x === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-        });
-        ctx.shadowBlur = 0;
-    };
-    draw();
-}
-
-function disconnectSession() {
-    if (appState.timerInterval) clearInterval(appState.timerInterval);
-    if (appState.silenceInterval) clearInterval(appState.silenceInterval);
-    if (appState.animationFrame) cancelAnimationFrame(appState.animationFrame);
-
-    if (appState.session) {
-        try { appState.session.close(); appState.session = null; } catch (e) { console.warn("Error closing session", e); }
-    }
-    
-    if (appState.stream) {
-        appState.stream.getTracks().forEach(track => track.stop());
-        appState.stream = null;
-    }
-    
-    if (appState.audioContext) { try { appState.audioContext.close(); appState.audioContext = null; } catch(e) {} }
-    if (appState.inputAudioContext) { try { appState.inputAudioContext.close(); appState.inputAudioContext = null; } catch(e) {} }
-
-    updateState({ 
-        isConnected: false,
-        isAiSpeaking: false,
-        isWaitingForResponse: false,
-        terminationTriggered: false
-    }, false);
-    
-    appState.nextAudioStartTime = 0;
-}
-
-function handleTermination(reason) {
-    if (appState.terminationTriggered) return;
-    appState.terminationTriggered = true;
-    
-    console.log(`Terminating Session: ${reason}`);
-    
-    const finalTranscript = appState.fullTranscriptHistory.join('\n');
-    
-    setTimeout(() => {
-        disconnectSession();
-        handleInterviewComplete(finalTranscript, reason);
-    }, 1000);
-}
+// FIX: Removed all utility functions related to the old Instructions screen UI:
+// getNetworkUI, getNoiseUI, updateInstructionsUI, checkNetworkSpeed, handleAudioInput, checkInitialDeviceStatus, checkPermissionsAndStartInterview
 
 async function startInterviewSession() {
     disconnectSession();
@@ -1051,7 +636,21 @@ async function startInterviewSession() {
     const candidate = appState.candidate;
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     
+    // FIX: Show a non-blocking warning if API key is missing or is the placeholder.
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE") || GEMINI_API_KEY === "AIzaSyC81YWNH6dBwF67OYLDxjEHeeA--t5uv9g") {
+        alert("⚠️ WARNING: The Gemini API Key is missing or using a placeholder. The AI connection will likely fail with an error until a valid key is provided.");
+    }
+
     try {
+        // --- DEVICE SETUP (Now combined and essential) ---
+        // 1. Get Microphone stream (This is the most critical step)
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: { channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true } 
+        });
+        appState.stream = stream;
+        updateState({ deviceStatus: 'Microphone Granted' }, false);
+
+        // 2. Setup Audio Contexts
         const audioContext = new AudioContextClass({ sampleRate: 24000 }); 
         appState.audioContext = audioContext;
         await audioContext.resume();
@@ -1061,6 +660,7 @@ async function startInterviewSession() {
         await inputAudioContext.resume();
         const currentSampleRate = inputAudioContext.sampleRate;
         
+        // 3. Setup Analyser for Visualizer
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 2048;
         analyser.smoothingTimeConstant = 0.8;
@@ -1068,13 +668,12 @@ async function startInterviewSession() {
         analyser.connect(audioContext.destination);
         drawVisualizer();
 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true } });
-        appState.stream = stream;
-
+        // 4. Setup ScriptProcessor for Microphone Input (VAD/PCM Encoding)
         const source = inputAudioContext.createMediaStreamSource(stream);
         const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
         source.connect(scriptProcessor);
         scriptProcessor.connect(inputAudioContext.destination);
+        // ----------------------------------------------------
 
         const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
         const sessionPromise = ai.live.connect({
@@ -1166,7 +765,12 @@ async function startInterviewSession() {
                     // FIX: Re-render only for UI updates, not for every micro-audio chunk
                     renderApp(); 
                 },
-                onerror: (e) => { console.error("WebSocket Error:", e); updateState({ status: 'error' }, true); },
+                onerror: (e) => { 
+                    console.error("WebSocket Error:", e); 
+                    // Show error and explicitly tell the user about the API key.
+                    alert("FATAL ERROR: AI Interviewer failed to connect. This is usually due to a missing or invalid Gemini API Key.");
+                    updateState({ status: 'error' }, true); 
+                },
                 onclose: () => { if (appState.isConnected) updateState({ status: 'connecting' }, true); }
             },
             config: {
@@ -1214,9 +818,13 @@ async function startInterviewSession() {
         
     } catch (e) {
         console.error("Live Audio Initialization Error:", e);
+        if (appState.deviceStatus !== 'Microphone Granted') {
+             alert("CRITICAL DEVICE ERROR: Could not access microphone. Please ensure permissions are granted and no other application is using the microphone.");
+        }
         updateState({ status: 'error' }, true);
     }
 }
+
 
 async function handleInterviewComplete(transcript, terminationReason) {
     updateState({ step: AppStep.EVALUATING, result: null, terminationReason }, true);
