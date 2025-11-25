@@ -3,1397 +3,966 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interna - Internanda Interview Agent</title>
+    <title>Internanda AI Interviewer - Interna</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* CSS Variables for Theming and Animation */
+        /* Custom Tailwind Configuration */
         :root {
-            --color-primary: #007bff; /* Blue */
-            --color-secondary: #6c757d; /* Gray */
-            --color-success: #28a745; /* Green */
-            --color-danger: #dc3545; /* Red */
-            --color-warning: #ffc107; /* Yellow */
-            --color-light: #f8f9fa;
-            --color-dark: #343a40;
-            --color-background: #ffffff;
-            --color-surface: #ffffff;
-            --color-border: #dee2e6;
-            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --spacing-unit: 8px;
-            --header-height: 70px;
+            --primary: #1e40af; /* Blue-700 */
+            --secondary: #6366f1; /* Indigo-500 */
+            --accent: #3b82f6; /* Blue-500 */
+            --bg-dark: #0f172a; /* Slate-900 */
+            --bg-light: #f1f5f9; /* Slate-100 */
         }
-
-        /* Base & Reset */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
         body {
-            font-family: var(--font-family);
-            background-color: var(--color-light);
-            color: var(--color-dark);
-            line-height: 1.6;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-        }
-
-        /* Accessibility & Focus States */
-        :focus {
-            outline: 3px solid var(--color-primary);
-            outline-offset: 2px;
-            border-radius: 4px;
-        }
-        
-        button:focus, input:focus, select:focus, textarea:focus {
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
-        }
-
-        /* Layout */
-        header {
-            background-color: var(--color-surface);
-            border-bottom: 1px solid var(--color-border);
-            padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            height: var(--header-height);
-        }
-
-        header img {
-            height: calc(var(--header-height) - 20px);
-            width: auto;
-            margin-right: var(--spacing-unit);
-        }
-
-        header h1 {
-            font-size: 1.5rem;
-            color: var(--color-primary);
-            display: flex;
-            align-items: center;
-        }
-
-        main {
-            flex-grow: 1;
-            padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 2);
-            max-width: 900px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        section {
-            background-color: var(--color-surface);
-            padding: calc(var(--spacing-unit) * 3);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-        
-        h2 {
-            font-size: 2rem;
-            margin-bottom: calc(var(--spacing-unit) * 3);
-            color: var(--color-dark);
-        }
-
-        /* Forms */
-        .form-group {
-            margin-bottom: calc(var(--spacing-unit) * 2);
-        }
-
-        label {
-            display: block;
-            margin-bottom: calc(var(--spacing-unit) / 2);
-            font-weight: 600;
-        }
-
-        input[type="text"], input[type="file"], textarea, select {
-            width: 100%;
-            padding: var(--spacing-unit);
-            border: 1px solid var(--color-border);
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-        
-        textarea {
-            resize: vertical;
-        }
-
-        /* Buttons */
-        button {
-            padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s, transform 0.1s;
-            font-weight: 600;
-        }
-
-        .btn-primary {
-            background-color: var(--color-primary);
-            color: var(--color-light);
-        }
-
-        .btn-secondary {
-            background-color: var(--color-secondary);
-            color: var(--color-light);
-        }
-
-        .btn-danger {
-            background-color: var(--color-danger);
-            color: var(--color-light);
-        }
-
-        button:hover:not(:disabled) {
-            opacity: 0.9;
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .button-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--spacing-unit);
-            margin-top: calc(var(--spacing-unit) * 3);
-        }
-
-        /* Interna UI (Robot Interviewer) */
-        .robot-header {
-            display: flex;
-            align-items: center;
-            gap: calc(var(--spacing-unit) * 2);
-            margin-bottom: calc(var(--spacing-unit) * 3);
-            padding: calc(var(--spacing-unit) * 2);
-            background-color: var(--color-light);
-            border-radius: 8px;
-            border: 1px solid var(--color-border);
-        }
-
-        .robot-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background-color: var(--color-primary);
-            color: var(--color-light);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            position: relative;
-            box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
-            transition: box-shadow 0.3s;
+            padding: 1rem;
         }
-        
-        .robot-avatar::after {
+
+        /* Glassmorphism Card Style */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7); /* Slate-800 with transparency */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            border: 1px solid rgba(100, 116, 139, 0.3); /* Slate-500 border */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Robot Avatar and Animations */
+        #robot-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            border: 5px solid var(--accent);
+            position: relative;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 0 40px var(--accent);
+            transition: all 0.3s ease;
+        }
+
+        /* Robot Face Elements */
+        .robot-eye {
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 45px;
+            transform: translateY(-50%);
+            transition: background 0.3s;
+        }
+        #eye-left { left: 45px; }
+        #eye-right { right: 45px; }
+
+        /* Robot Mouth / Waveform */
+        #robot-mouth {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 10px;
+            background-color: #fca5a5; /* Red for visibility */
+            border-radius: 5px;
+            transition: all 0.1s ease-out;
+            opacity: 0;
+        }
+
+        /* Animation: Speaking (Mouth Movement) */
+        @keyframes speaking {
+            0%, 100% { height: 10px; background-color: #fca5a5; }
+            25% { height: 15px; background-color: #fecaca; }
+            50% { height: 5px; background-color: #fca5a5; }
+            75% { height: 18px; background-color: #fecaca; }
+        }
+        .speaking #robot-mouth {
+            opacity: 1;
+            animation: speaking 0.4s infinite alternate;
+        }
+
+        /* Animation: Listening (Pulsing Mic/Waves) */
+        @keyframes listening-pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .listening #robot-avatar::after {
             content: '';
             position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: inherit;
-            background-color: rgba(255, 255, 255, 0.1);
-            animation: none;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            border: 3px solid var(--accent);
+            animation: listening-pulse 1.5s infinite ease-out;
+            pointer-events: none;
+        }
+        .listening #robot-avatar .robot-eye {
+            background: #fef08a; /* Yellow for listening */
+        }
+        .listening #robot-mouth {
+             background: #bbf7d0; /* Green for listening */
+             opacity: 1;
         }
 
-        .listening-state .robot-avatar::after {
-            animation: pulse 1.5s infinite;
+        /* Transcription/Chat Bubbles */
+        .chat-bubble {
+            max-width: 90%;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            line-height: 1.5;
+            word-wrap: break-word;
         }
-        
-        .speaking-state .robot-avatar {
-            box-shadow: 0 0 0 4px var(--color-primary);
+        .interna-bubble {
+            background-color: rgba(30, 41, 59, 0.9); /* Darker blue */
+            border-left: 4px solid var(--accent);
+            margin-right: auto;
         }
-
-        .speaking-state .robot-avatar::after {
-            /* Microphone/Waveform placeholder for visual cue */
-            content: '🔊'; 
-            background: none;
-            font-size: 1.5rem;
-            animation: none;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0); }
-        }
-
-        .interview-box {
-            border: 2px solid var(--color-primary);
-            padding: calc(var(--spacing-unit) * 3);
-            border-radius: 8px;
-            margin-bottom: calc(var(--spacing-unit) * 3);
-            background-color: var(--color-light);
-        }
-
-        .interview-question {
-            font-size: 1.25rem;
-            font-weight: 500;
-        }
-        
-        #timer-area {
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-top: var(--spacing-unit);
-            color: var(--color-danger);
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* Transcript */
-        #transcript-list {
-            max-height: 400px;
-            overflow-y: auto;
-            padding-right: var(--spacing-unit);
-            border-top: 1px dashed var(--color-border);
-            padding-top: calc(var(--spacing-unit) * 2);
-        }
-
-        .transcript-item {
-            margin-bottom: calc(var(--spacing-unit) * 3);
-            padding-bottom: calc(var(--spacing-unit) * 2);
-            border-bottom: 1px dotted var(--color-secondary);
-        }
-
-        .transcript-item h4 {
-            color: var(--color-primary);
-            margin-bottom: var(--spacing-unit);
-        }
-
-        .transcript-meta {
-            font-size: 0.9rem;
-            color: var(--color-secondary);
-            margin-top: var(--spacing-unit);
-        }
-
-        /* Results Page */
-        .score-display {
-            font-size: 4rem;
-            font-weight: bold;
-            text-align: center;
-            margin: calc(var(--spacing-unit) * 4) 0;
-            padding: calc(var(--spacing-unit) * 3);
-            border-radius: 12px;
-            border: 5px solid var(--color-success);
-            color: var(--color-success);
-            background-color: #e6f7e9;
-            transition: all 0.5s ease-out;
-        }
-
-        .score-display.fail {
-            border-color: var(--color-warning);
-            color: #d8b800;
-            background-color: #fffbe6;
-        }
-        
-        .result-message {
-            text-align: center;
-            font-size: 1.5rem;
-            margin-bottom: calc(var(--spacing-unit) * 3);
-        }
-
-        .deduction-list {
-            list-style: none;
-            padding: 0;
-            margin-top: calc(var(--spacing-unit) * 2);
-        }
-        
-        .deduction-item {
-            display: flex;
-            justify-content: space-between;
-            padding: var(--spacing-unit);
-            border-bottom: 1px dashed var(--color-border);
-            font-size: 1.1rem;
-        }
-
-        .deduction-item .reason {
-            flex-grow: 1;
-        }
-
-        .deduction-item .amount {
-            color: var(--color-danger);
-            font-weight: bold;
-            width: 60px;
+        .candidate-bubble {
+            background-color: rgba(71, 85, 105, 0.9); /* Slate-600 */
+            border-right: 4px solid #f97316; /* Orange-500 */
+            margin-left: auto;
             text-align: right;
         }
 
-        .pass-message {
-            color: var(--color-success);
-            font-weight: bold;
+        /* Print Styles for PDF Download */
+        @media print {
+            body {
+                background: white;
+                color: #333;
+                font-size: 10pt;
+                padding: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+            #app-container {
+                box-shadow: none;
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+                border: none;
+                backdrop-filter: none;
+                background: white;
+                color: #333;
+            }
+            #results-section {
+                padding: 1rem;
+            }
+            h1, h2, h3 {
+                color: #1e40af;
+            }
+            .glass-card {
+                background: #f0f0f0 !important;
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+                margin-bottom: 1rem;
+            }
+            .text-5xl { font-size: 2.5rem; }
+            .text-3xl { font-size: 1.5rem; }
         }
-
-        .fail-message {
-            color: var(--color-secondary);
-            font-weight: 500;
-        }
-
-
-        /* Utility */
-        .hidden { display: none !important; }
-        .alert {
-            padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
-            margin-bottom: calc(var(--spacing-unit) * 2);
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        .alert-danger { background-color: #f8d7da; color: var(--color-danger); }
-        .alert-success { background-color: #d4edda; color: var(--color-success); }
-        .alert-warning { background-color: #fff3cd; color: #856404; }
-
-        .loading-spinner {
-            border: 3px solid rgba(0, 0, 0, 0.1);
-            border-top: 3px solid var(--color-primary);
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-left: var(--spacing-unit);
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Settings Panel */
-        #settings-panel {
-            margin-top: calc(var(--spacing-unit) * 3);
-            border-radius: 8px;
-            box-shadow: none;
-            border: 1px solid var(--color-border);
-        }
-        
-        #settings-panel h3 {
-            border-bottom: 1px dashed var(--color-border);
-            padding-bottom: var(--spacing-unit);
-            margin-bottom: var(--spacing-unit)
-        }
-
     </style>
 </head>
-<body>
-    <header role="banner">
-        <h1>
-            <img src="interna.png" alt="Interna Logo">
-            Interna
-        </h1>
-        <div class="settings-control">
-            <button id="show-settings-btn" class="btn-secondary" aria-controls="settings-panel" aria-expanded="false">⚙️ Settings</button>
-        </div>
-    </header>
+<body class="flex items-center justify-center p-4">
 
-    <main role="main">
-        <div id="status-alert" class="alert hidden" role="alert" aria-atomic="true"></div>
+    <!-- Main Application Container -->
+    <div id="app-container" class="glass-card w-full max-w-4xl p-6 md:p-10 transition-all duration-500">
 
-        <section id="intake-screen" class="active">
-            <h2>👋 Welcome to Interna Interview Agent</h2>
-            <form id="intake-form">
-                <div class="form-group">
-                    <label for="candidate-name">Full Name *</label>
-                    <input type="text" id="candidate-name" required aria-required="true" placeholder="Alex Lee">
-                </div>
-                <div class="form-group">
-                    <label for="post-applied">Post Applied For *</label>
-                    <input type="text" id="post-applied" required aria-required="true" value="Intern">
-                </div>
-                <div class="form-group">
-                    <label for="resume-upload">Resume (Optional, for context)</label>
-                    <input type="file" id="resume-upload" accept=".txt,.pdf,.doc,.docx" aria-describedby="resume-help">
-                    <p id="resume-help" style="font-size: 0.8rem; color: var(--color-secondary);">Plain text will be extracted for context.</p>
-                    <p id="resume-preview" style="font-size: 0.9rem; margin-top: 5px;"></p>
-                </div>
-                <button type="submit" class="btn-primary" id="start-interview-btn">Start Interview Session</button>
-            </form>
-        </section>
-
-        <section id="interview-screen" class="hidden">
-            <div class="robot-header" role="heading" aria-level="2">
-                <div id="robot-avatar" class="robot-avatar speaking-state">🤖</div>
-                <div id="robot-status">Interna is preparing your first question...</div>
-            </div>
-
-            <div class="interview-box" role="status" aria-live="polite">
-                <p id="current-question-text" class="interview-question">Loading Interview Setup...</p>
-                <div id="timer-area">
-                    <span>Total Time: <span id="total-timer">00:00</span> / 10:00</span>
-                    <span>Time Remaining for Answer: <span id="question-timer">00:00</span></span>
-                </div>
-            </div>
-            
-            <div id="interview-controls">
-                <div class="form-group">
-                    <label for="candidate-answer">Your Answer</label>
-                    <textarea id="candidate-answer" rows="5" placeholder="Type your response here..." maxlength="1200" aria-label="Candidate Answer"></textarea>
-                </div>
-
-                <div id="followup-area" class="form-group hidden">
-                    <label>Follow-up Question Suggested by Interna:</label>
-                    <blockquote id="suggested-followup-text" style="padding: 10px; border-left: 4px solid var(--color-secondary); margin-bottom: 10px; font-style: italic;"></blockquote>
-                    <button id="use-followup-btn" class="btn-secondary">Use Follow-up</button>
-                </div>
-
-                <div class="button-group">
-                    <button id="submit-answer-btn" class="btn-primary" disabled>Submit Answer</button>
-                    <button id="skip-followup-btn" class="btn-secondary hidden">Skip Follow-up</button>
-                    <button id="end-interview-btn" class="btn-danger">End Session Early</button>
-                </div>
-            </div>
-
-            <h3 style="margin-top: 25px;">Live Transcript</h3>
-            <div id="transcript-list" role="log" aria-live="polite">
-                </div>
-        </section>
-
-        <section id="results-screen" class="hidden">
-            <h2 id="results-heading">Interview Results for <span id="result-candidate-name"></span></h2>
-            
-            <div id="final-score-area">
-                <p class="result-message">Final Overall Score (Max 10):</p>
-                <div id="final-score" class="score-display">N/A</div>
-                <p id="final-message" class="result-message"></p>
-                
-                <h3 style="margin-top: 40px; border-bottom: 1px dashed var(--color-border); padding-bottom: 10px;">Score Breakdown: <span id="total-deduction-amount"></span> Points Deducted</h3>
-                <ul id="deduction-breakdown" class="deduction-list">
-                    </ul>
-                <p style="font-size: 0.9rem; margin-top: 15px; color: var(--color-secondary);">The total score is 10 minus the sum of these deductions.</p>
-                
-                <h3 style="margin-top: 40px; border-bottom: 1px dashed var(--color-border); padding-bottom: 10px;">Full Transcript & Summary</h3>
-                <div id="result-transcript-list">
-                    </div>
-            </div>
-
-            <h3 style="margin-top: 40px;">Next Steps & Resources</h3>
-            <div id="next-steps-area">
-                <p id="next-steps-text"></p>
-                <ul id="suggested-resources" style="margin-left: 20px; margin-top: 10px; font-style: italic;">
-                    <li><a href="#" target="_blank">Recommended Course: Improve Communication Skills</a></li>
-                    <li><a href="#" target="_blank">Resource: Mastering Internship Technical Questions</a></li>
-                </ul>
-            </div>
-
-            <div class="button-group">
-                <button id="download-json-btn" class="btn-primary">Download Report (JSON)</button>
-                <button id="download-csv-btn" class="btn-secondary">Download Report (CSV)</button>
-                <button id="print-pdf-btn" class="btn-secondary">Print Report</button>
-                <button id="start-new-btn" class="btn-danger">Start New Interview</button>
-            </div>
-        </section>
-
-        <section id="settings-panel" class="hidden">
-            <h2 id="settings-heading">⚙️ Application Settings</h2>
-            <p style="font-size: 0.9rem; color: var(--color-danger); font-weight: bold; margin-bottom: 15px;">
-                🚨 **SECURITY NOTICE:** Do not paste a real, permanent API key into the browser in production. Use the local proxy. Inline keys are for testing only.
+        <!-- Initial Setup Screen -->
+        <section id="intro-section" class="space-y-6">
+            <h1 class="text-3xl font-bold text-center text-white">
+                <span class="text-accent">Interna</span>: AI Interview Agent
+            </h1>
+            <p class="text-center text-slate-400">
+                Welcome to your fully voice-driven interview for Internanda. Please fill in your details to begin.
             </p>
-            <div class="form-group">
-                <label for="api-mode">API Mode (Proxy Recommended)</label>
-                <select id="api-mode" name="api-mode">
-                    <option value="proxy">Use Local Proxy (/api/gemini)</option>
-                    <option value="direct">Direct Client-Side API Key (Insecure!)</option>
-                </select>
-            </div>
-            <div class="form-group" id="api-key-group" style="display: none;">
-                <label for="gemini-api-key">Gemini API Key</label>
-                <input type="password" id="gemini-api-key" placeholder="Paste your GEMINI_API_KEY here">
-            </div>
-            
-            <button id="save-settings-btn" class="btn-primary">Save Settings</button>
-            <button id="run-self-test-btn" class="btn-secondary">Run Self-Test</button>
-            <div id="self-test-results" style="margin-top: 10px; font-size: 0.9rem;"></div>
-            
-            <hr style="margin: 20px 0;">
 
-            <h3>LLM Prompt Templates (for Advanced Users)</h3>
-            <p style="font-size: 0.9rem; color: var(--color-secondary);">These templates define Interna's personality and scoring logic.</p>
-            <div class="form-group">
-                <label for="prompt-question">A) Question Generation Prompt</label>
-                <textarea id="prompt-question" rows="4" aria-label="Question Generation Prompt Template"></textarea>
+            <!-- API Warning -->
+            <div class="bg-red-900/50 p-4 rounded-lg border border-red-700/50 text-sm text-red-300">
+                <p class="font-semibold">⚠️ API Key Warning:</p>
+                <p>This application is designed to run locally. Ensure you provide a valid Gemini API key in the JavaScript code to enable the AI functionality.</p>
             </div>
-            <div class="form-group">
-                <label for="prompt-summary">B) Answer Summary & Score Prompt</label>
-                <textarea id="prompt-summary" rows="5" aria-label="Answer Summary and Score Prompt Template"></textarea>
-            </div>
-            <div class="form-group">
-                <label for="prompt-followup">C) Follow-up Question Prompt</label>
-                <textarea id="prompt-followup" rows="3" aria-label="Follow-up Question Prompt Template"></textarea>
-            </div>
-            <button id="save-prompts-btn" class="btn-secondary">Save Prompts</button>
 
+            <div class="space-y-4">
+                <div>
+                    <label for="candidate-name" class="block text-sm font-medium text-slate-300 mb-1">Candidate Name</label>
+                    <input type="text" id="candidate-name" value="Candidate"
+                           class="w-full p-3 rounded-lg bg-slate-700/50 border border-slate-600 focus:ring-accent focus:border-accent text-white"
+                           placeholder="Enter your name">
+                </div>
+                <div>
+                    <label for="role-applied-for" class="block text-sm font-medium text-slate-300 mb-1">Role Applied For</label>
+                    <input type="text" id="role-applied-for" value="Intern"
+                           class="w-full p-3 rounded-lg bg-slate-700/50 border border-slate-600 focus:ring-accent focus:border-accent text-white"
+                           placeholder="e.g., Software Intern, Marketing Intern">
+                </div>
+            </div>
+
+            <button onclick="startInterview()"
+                    class="w-full py-3 mt-4 text-lg font-semibold rounded-lg bg-accent hover:bg-blue-600 transition duration-200 shadow-lg shadow-accent/50">
+                Start Interview
+            </button>
         </section>
-    </main>
 
-    <script>
-        // Filename: index.html (JavaScript)
+        <!-- Live Interview Screen -->
+        <section id="interview-section" class="hidden">
+            <div class="flex flex-col md:flex-row gap-6">
 
-        const CONFIG = {
-            appName: "Interna",
-            company: "Internanda",
-            maxInterviewMinutes: 10,
-            maxScore: 10,
-            passThreshold: 6, // Score > 6 is a pass
-            proxyEndpoint: '/api/gemini',
-            maxAnswerChars: 1200,
-            // ⚠️ INSECURE: Only for quick local demos. Use proxy in production.
-            INLINE_API_KEY: ""
-        };
+                <!-- Left Panel: Robot & Controls -->
+                <div class="md:w-1/3 flex flex-col items-center p-4 glass-card bg-slate-800/80">
+                    <h2 class="text-xl font-semibold mb-4 text-center">Interna: The Interviewer</h2>
 
-        const STATE = {
-            apiMode: 'proxy',
-            apiKey: CONFIG.INLINE_API_KEY,
-            proxyEnabled: true,
-            isInterviewActive: false,
-            currentQ: 0, // 0-indexed position in the questions array
-            totalQuestions: 0,
-            questions: [], // Array of {text, isFollowUp, timeLimit, timeTaken}
-            answers: [], // Array of {question, rawAnswer, summary, strengths, weaknesses, score, reason, deductionBreakdown}
-            candidate: { name: "", post: "", resumeText: "" },
-            timers: { total: 0, question: 0, totalInterval: null, questionInterval: null },
-            rateLimitTimer: 0,
-            isSpeaking: false,
-        };
+                    <!-- Robot Avatar -->
+                    <div id="robot-avatar" class="flex items-center justify-center">
+                        <div class="robot-eye" id="eye-left"></div>
+                        <div class="robot-eye" id="eye-right"></div>
+                        <div id="robot-mouth"></div>
+                    </div>
+
+                    <p id="status-message" class="text-lg font-medium text-center h-8 my-2 text-yellow-400">Initializing...</p>
+
+                    <!-- Timer -->
+                    <div class="mt-4 p-2 bg-slate-700/50 rounded-lg text-center w-full">
+                        <span class="text-sm text-slate-400 block">TIME LEFT (10:00)</span>
+                        <div id="interview-timer" class="text-3xl font-mono text-accent">10:00</div>
+                    </div>
+
+                    <!-- End Button -->
+                    <button onclick="endInterview(true)"
+                            id="end-session-btn"
+                            class="w-full py-3 mt-6 text-md font-semibold rounded-lg bg-red-600 hover:bg-red-700 transition duration-200 shadow-lg shadow-red-600/50 flex items-center justify-center gap-2"
+                            disabled>
+                        <i data-lucide="power"></i>
+                        End Session
+                    </button>
+                    <p class="text-xs mt-2 text-slate-500 text-center">The interview will auto-end after 10 minutes.</p>
+                </div>
+
+                <!-- Right Panel: Transcript & Analysis -->
+                <div class="md:w-2/3 h-[600px] flex flex-col">
+                    <h2 class="text-xl font-semibold mb-4 text-white">Live Transcript & Evaluation</h2>
+                    <div id="transcript-panel" class="flex-grow overflow-y-auto p-4 space-y-4 glass-card bg-slate-800/80">
+                        <!-- Chat bubbles will be inserted here -->
+                        <div class="text-center text-slate-500 italic p-4">Transcript will appear here.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final Results Screen -->
+        <section id="results-section" class="hidden space-y-6">
+            <h1 class="text-4xl font-extrabold text-center text-white">
+                Interview <span class="text-accent">Completed</span>
+            </h1>
+
+            <!-- Overall Score Card -->
+            <div class="glass-card p-6 flex flex-col items-center bg-slate-800/80">
+                <h2 class="text-2xl font-semibold text-slate-300 mb-2">Final Evaluation Score</h2>
+                <div id="final-score" class="text-7xl font-mono font-extrabold text-accent">--</div>
+                <p id="final-verdict" class="mt-4 text-xl font-bold"></p>
+                <div id="final-deductions" class="mt-4 w-full max-w-xl text-center">
+                    <h3 class="text-lg font-semibold text-slate-400 mb-2">Overall Deduction Reasons:</h3>
+                    <ul id="deduction-list" class="list-disc list-inside text-sm text-slate-300 text-left mx-auto">
+                        <!-- Deduction reasons will be listed here -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Detailed Breakdown -->
+            <h2 class="text-2xl font-bold text-slate-300 mt-8">Question Breakdown</h2>
+            <div id="breakdown-panel" class="space-y-6">
+                <!-- Detailed results per question will be inserted here -->
+            </div>
+
+            <!-- Action Buttons (No Print) -->
+            <div class="no-print flex flex-col sm:flex-row justify-center gap-4 mt-8">
+                <button onclick="downloadResults('json')"
+                        class="py-3 px-6 text-lg font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 transition duration-200 shadow-lg shadow-indigo-600/50 flex items-center justify-center gap-2">
+                    <i data-lucide="download"></i> Download JSON
+                </button>
+                <button onclick="downloadResults('pdf')"
+                        class="py-3 px-6 text-lg font-semibold rounded-lg bg-green-600 hover:bg-green-700 transition duration-200 shadow-lg shadow-green-600/50 flex items-center justify-center gap-2">
+                    <i data-lucide="printer"></i> Print/Download PDF
+                </button>
+                <button onclick="location.reload()"
+                        class="py-3 px-6 text-lg font-semibold rounded-lg bg-slate-600 hover:bg-slate-700 transition duration-200 flex items-center justify-center gap-2">
+                    <i data-lucide="rotate-ccw"></i> Restart Interview
+                </button>
+            </div>
+        </section>
+
+        <!-- Debug Panel Toggle -->
+        <div class="no-print mt-6 text-center">
+            <button onclick="toggleDebugPanel()" class="text-xs text-slate-500 hover:text-accent transition duration-200">
+                Toggle Debug Panel
+            </button>
+            <div id="debug-panel" class="hidden mt-2 p-4 bg-slate-900 rounded-lg text-xs text-left overflow-x-auto">
+                <h3 class="font-bold text-slate-300 mb-2">Gemini API Calls Log:</h3>
+                <pre id="debug-log" class="whitespace-pre-wrap text-slate-400"></pre>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // --- GLOBAL CONFIGURATION AND CONSTANTS ---
+
+        // IMPORTANT: Replace this with your actual Gemini API Key
+        const GEMINI_API_KEY = "";
+        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+        const MAX_INTERVIEW_TIME_SECONDS = 600; // 10 minutes
+
+        // Firebase-like environment variables (Mandatory for Canvas setup, even if Firestore isn't used)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // --- LLM Prompt Templates ---
-        // These are the default templates, which can be overridden in the Settings panel
-        const DEFAULT_PROMPTS = {
-            QUESTION_GENERATION: (name, post, resume) => `You are an AI interviewer, Interna, conducting a friendly, professional, internship-level interview for the post of "${post}" at Internanda. The candidate's name is ${name}. You will generate a deck of 8 concise questions (mix of motivation, general, and light technical relevant to the post). The questions must be appropriate for an intern. Output the questions as a single JSON array of strings: ["Q1...", "Q2...", ...]. The candidate's resume context is: "${resume.substring(0, 500)}". Do not include any other text or preamble.`,
+        // Ensure Lucide icons are rendered
+        lucide.createIcons();
+        
+        // --- GLOBAL STATE ---
+        let candidateName = "";
+        let roleAppliedFor = "";
+        let interviewLog = []; // Stores { type: 'question'|'answer'|'evaluation', text: '...', data: {} }
+        let currentQuestion = null;
+        let isSpeaking = false;
+        let isListening = false;
+        let isInterviewActive = false;
+        let interviewTimer = null;
+        let secondsRemaining = MAX_INTERVIEW_TIME_SECONDS;
 
-            ANSWER_SUMMARY_SCORING: (question, rawAnswer, post) => `Analyze the following candidate's answer to the question: "${question}", for the internship post of "${post}".
-            1. **Summary:** Produce a concise summary (1-3 sentences).
-            2. **Score (1-10):** Assign a numeric score from 1 (poor) to 10 (excellent).
-            3. **Justification:** Provide a single sentence explaining the score.
-            4. **Deductions:** List reasons and point deductions that sum exactly to (10 - Score). If the score is 10, deductions should be empty. Deductions must be grouped by category (e.g., 'Clarity', 'Technical Depth', 'Motivation').
-            5. **Strengths & Weaknesses:** List 3 strengths and 3 weaknesses.
-            Output your response in a parseable JSON format: 
-            {"summary": "...", "score": 7, "reason": "...", 
-            "deductionBreakdown": [{"reason": "Lack of detail in explanation.", "deduction": 2}, {"reason": "Weak communication structure.", "deduction": 1}],
-            "strengths": ["...", "...", "..."], "weaknesses": ["...", "...", "..."]}. 
-            The sum of 'deduction' must be (10 - score). Do not include any other text.`,
+        // Speech Synthesis and Recognition setup
+        const synth = window.speechSynthesis;
+        const recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let speechRecognition = recognition ? new recognition() : null;
+        if (speechRecognition) {
+            speechRecognition.continuous = false;
+            speechRecognition.interimResults = false;
+            speechRecognition.lang = 'en-US';
+        }
 
-            FOLLOW_UP_SUGGESTION: (question, rawAnswer) => `Based on the candidate's raw answer: "${rawAnswer}", to the question: "${question}", suggest exactly 1 concise, probing follow-up question to delve deeper or clarify points.
-            Output ONLY the follow-up question text as a string. Do not include any JSON wrappers or other text.`,
-            
-            // This prompt is for the self-test only
-            TEST_PROMPT: "Provide a two-sentence friendly response to a self-test request."
-        };
-        let PROMPTS = { ...DEFAULT_PROMPTS }; // Clone for runtime modification
+        // --- GEMINI PROMPT TEMPLATES ---
 
-        // --- DOM Element Mapping ---
-        const D = {
-            // Screens
-            intakeScreen: document.getElementById('intake-screen'),
-            interviewScreen: document.getElementById('interview-screen'),
-            resultsScreen: document.getElementById('results-screen'),
-            settingsPanel: document.getElementById('settings-panel'),
-            // Intake
-            intakeForm: document.getElementById('intake-form'),
-            candidateName: document.getElementById('candidate-name'),
-            postApplied: document.getElementById('post-applied'),
-            resumeUpload: document.getElementById('resume-upload'),
-            resumePreview: document.getElementById('resume-preview'),
-            // Interview UI
-            robotAvatar: document.getElementById('robot-avatar'),
-            robotStatus: document.getElementById('robot-status'),
-            currentQuestionText: document.getElementById('current-question-text'),
-            totalTimer: document.getElementById('total-timer'),
-            questionTimer: document.getElementById('question-timer'),
-            candidateAnswer: document.getElementById('candidate-answer'),
-            followupArea: document.getElementById('followup-area'),
-            suggestedFollowupText: document.getElementById('suggested-followup-text'),
-            useFollowupBtn: document.getElementById('use-followup-btn'),
-            skipFollowupBtn: document.getElementById('skip-followup-btn'),
-            submitAnswerBtn: document.getElementById('submit-answer-btn'),
-            endInterviewBtn: document.getElementById('end-interview-btn'),
-            transcriptList: document.getElementById('transcript-list'),
-            // Results
-            resultCandidateName: document.getElementById('result-candidate-name'),
-            finalScore: document.getElementById('final-score'),
-            finalMessage: document.getElementById('final-message'),
-            totalDeductionAmount: document.getElementById('total-deduction-amount'),
-            deductionBreakdown: document.getElementById('deduction-breakdown'),
-            resultTranscriptList: document.getElementById('result-transcript-list'),
-            nextStepsText: document.getElementById('next-steps-text'),
-            suggestedResources: document.getElementById('suggested-resources'),
-            downloadJsonBtn: document.getElementById('download-json-btn'),
-            downloadCsvBtn: document.getElementById('download-csv-btn'),
-            printPdfBtn: document.getElementById('print-pdf-btn'),
-            startNewBtn: document.getElementById('start-new-btn'),
-            // Settings/Status
-            showSettingsBtn: document.getElementById('show-settings-btn'),
-            statusAlert: document.getElementById('status-alert'),
-            apiMode: document.getElementById('api-mode'),
-            apiKeyInput: document.getElementById('gemini-api-key'),
-            apiKeyGroup: document.getElementById('api-key-group'),
-            saveSettingsBtn: document.getElementById('save-settings-btn'),
-            runSelfTestBtn: document.getElementById('run-self-test-btn'),
-            selfTestResults: document.getElementById('self-test-results'),
-            // Prompt Editors
-            promptQuestion: document.getElementById('prompt-question'),
-            promptSummary: document.getElementById('prompt-summary'),
-            promptFollowup: document.getElementById('prompt-followup'),
-            savePromptsBtn: document.getElementById('save-prompts-btn'),
+        // A) Question Generator System Prompt
+        const QUESTION_SYSTEM_PROMPT = (role, history) => {
+            const historyText = history.map(item => {
+                if (item.type === 'question') return `Q: ${item.text}`;
+                if (item.type === 'answer') return `A: ${item.text}`;
+                return '';
+            }).join('\n');
+
+            return `You are Interna, an AI interviewer for the role of ${role}. Your task is to generate the next question for the candidate, ${candidateName}.
+1. The questions should progress logically from general/behavioral (motivation, fit) to simple-to-moderate technical questions suitable for an intern level.
+2. Do NOT repeat questions or topics already covered.
+3. The response must be *only* the question text, starting with a capital letter and ending with a question mark. Do not include 'Interna says:', 'Next question:', or any other conversational prefix.
+4. If the interview history has 5 or more questions, generate a brief, final concluding question (e.g., "Do you have any questions for me?") or state the exact string "INTERVIEW_COMPLETE" to signal the end of the interview.
+
+--- Interview History ---
+${historyText}`;
         };
 
-        // --- Core API Abstraction ---
+        // B) Answer Evaluator JSON Schema
+        const EVALUATION_SCHEMA = {
+            type: "OBJECT",
+            properties: {
+                score: { type: "INTEGER", description: "The candidate's score for this answer (1-10), with 10 being perfect." },
+                summary: { type: "STRING", description: "A concise, objective summary of the candidate's answer." },
+                strengths: { type: "ARRAY", items: { type: "STRING" }, description: "List of 1-2 key strengths of the answer (e.g., clarity, depth, relevance)." },
+                weaknesses: { type: "ARRAY", items: { type: "STRING" }, description: "List of 1-2 key weaknesses or areas for improvement (e.g., vagueness, missing key points)." },
+                deductions: { type: "ARRAY", items: { type: "STRING" }, description: "Specific, clear reasons for point deductions. Must explain *why* points were lost (e.g., 'Lacked concrete examples,' 'Did not address the technical aspect')." }
+            },
+            required: ["score", "summary", "strengths", "weaknesses", "deductions"]
+        };
 
-        /**
-         * Toggles the UI state between "speaking" (waiting for question) and "listening" (waiting for answer).
-         * @param {boolean} isSpeaking
-         */
-        const setRobotState = (isSpeaking) => {
-            STATE.isSpeaking = isSpeaking;
-            D.robotAvatar.className = isSpeaking ? 'robot-avatar speaking-state' : 'robot-avatar listening-state';
-            D.submitAnswerBtn.disabled = isSpeaking;
-            D.candidateAnswer.disabled = isSpeaking;
+        // C) Answer Evaluator System Prompt
+        const EVALUATION_SYSTEM_PROMPT = (question, role) => `You are Interna, a professional hiring manager robot. You must evaluate the candidate's transcribed answer for the role of ${role}.
+The question was: "${question}".
+1. Be critical but fair, assigning a score from 1 to 10 based on relevance, clarity, and depth for an intern-level answer.
+2. Output a single, strict JSON object following the provided schema. Do not add any text outside the JSON object.`;
+
+
+        // --- UI & ANIMATION FUNCTIONS ---
+
+        const robotAvatar = document.getElementById('robot-avatar');
+        const statusMessage = document.getElementById('status-message');
+        const transcriptPanel = document.getElementById('transcript-panel');
+        const timerDisplay = document.getElementById('interview-timer');
+        const endSessionBtn = document.getElementById('end-session-btn');
+        const debugLog = document.getElementById('debug-log');
+        const debugPanel = document.getElementById('debug-panel');
+
+        function updateRobotState(state) { // 'speaking', 'listening', 'idle'
+            isSpeaking = state === 'speaking';
+            isListening = state === 'listening';
+
+            robotAvatar.className = 'flex items-center justify-center';
+            statusMessage.textContent = '';
+            endSessionBtn.disabled = isSpeaking || isListening;
 
             if (isSpeaking) {
-                D.robotStatus.textContent = "Interna is speaking...";
+                robotAvatar.classList.add('speaking');
+                statusMessage.textContent = 'Interna is Speaking...';
+                statusMessage.classList.remove('text-green-400');
+                statusMessage.classList.add('text-yellow-400');
+            } else if (isListening) {
+                robotAvatar.classList.add('listening');
+                statusMessage.textContent = 'Candidate is Speaking...';
+                statusMessage.classList.remove('text-yellow-400');
+                statusMessage.classList.add('text-green-400');
             } else {
-                const question = STATE.questions[STATE.currentQ];
-                if (question) {
-                     D.robotStatus.textContent = `Interna is listening to your answer for Q${STATE.currentQ + 1}.`;
-                } else {
-                    D.robotStatus.textContent = "Interna is ready.";
+                statusMessage.textContent = 'Waiting for next question.';
+                statusMessage.classList.remove('text-yellow-400', 'text-green-400');
+            }
+        }
+
+        function toggleDebugPanel() {
+            debugPanel.classList.toggle('hidden');
+        }
+
+        function logDebug(title, payload, response) {
+            const time = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `
+<hr class="my-2 border-slate-700">
+<p class="font-bold text-accent">[${time}] ${title}</p>
+<p class="mt-1 text-slate-500">REQUEST:</p>
+<pre>${JSON.stringify(payload, null, 2)}</pre>
+<p class="mt-1 text-slate-500">RESPONSE:</p>
+<pre>${JSON.stringify(response, null, 2)}</pre>
+`;
+            debugPanel.scrollTop = debugPanel.scrollHeight;
+        }
+
+        function appendTranscript(type, text, data = null) {
+            let bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${type === 'interna' ? 'interna-bubble' : 'candidate-bubble'}`;
+            
+            if (type === 'interna') {
+                bubble.innerHTML = `<span class="font-bold text-accent">Interna:</span> ${text}`;
+                interviewLog.push({ type: 'question', text: text, data: data });
+                currentQuestion = text; // Set the current question
+            } else {
+                bubble.innerHTML = `<span class="font-bold text-orange-400">You:</span> ${text}`;
+                interviewLog.push({ type: 'answer', text: text, data: data });
+            }
+
+            transcriptPanel.appendChild(bubble);
+            transcriptPanel.scrollTop = transcriptPanel.scrollHeight;
+        }
+
+        function appendEvaluation(evaluation) {
+            let evalHtml = `
+                <div class="p-4 rounded-lg bg-slate-700/50 border border-slate-600 space-y-2 my-2">
+                    <h4 class="font-bold text-lg text-white flex justify-between items-center">
+                        Question ${interviewLog.filter(i => i.type === 'evaluation').length + 1} Evaluation
+                        <span class="text-3xl font-mono ${evaluation.score >= 7 ? 'text-green-400' : evaluation.score >= 4 ? 'text-yellow-400' : 'text-red-400'}">${evaluation.score}/10</span>
+                    </h4>
+                    <p class="text-sm italic text-slate-400 border-b border-slate-700 pb-2">Summary: ${evaluation.summary}</p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <div class="w-full sm:w-1/2">
+                            <h5 class="font-semibold text-green-300">Strengths:</h5>
+                            <ul class="list-disc list-inside text-sm text-green-200">
+                                ${evaluation.strengths.map(s => `<li>${s}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="w-full sm:w-1/2">
+                            <h5 class="font-semibold text-red-300">Weaknesses / Deductions:</h5>
+                            <ul class="list-disc list-inside text-sm text-red-200">
+                                ${evaluation.deductions.map(d => `<li class="text-red-400">${d}</li>`).join('')}
+                                ${evaluation.weaknesses.filter(w => !evaluation.deductions.includes(w)).map(w => `<li>${w}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+            let bubble = document.createElement('div');
+            bubble.innerHTML = evalHtml;
+            transcriptPanel.appendChild(bubble);
+            transcriptPanel.scrollTop = transcriptPanel.scrollHeight;
+
+            interviewLog.push({ type: 'evaluation', text: 'Evaluation complete.', data: evaluation });
+        }
+
+
+        // --- SPEECH INTERACTION ---
+
+        function speak(text) {
+            if (isSpeaking) return;
+
+            return new Promise((resolve) => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = synth.getVoices().find(v => v.lang.startsWith('en')) || synth.getVoices()[0]; // Use an English voice
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                
+                utterance.onstart = () => {
+                    updateRobotState('speaking');
+                };
+                utterance.onend = () => {
+                    updateRobotState('idle');
+                    resolve();
+                };
+                utterance.onerror = (e) => {
+                    console.error('Speech synthesis error:', e);
+                    updateRobotState('idle');
+                    resolve(); // Resolve anyway to unblock the flow
+                };
+                synth.speak(utterance);
+            });
+        }
+
+        function startListening() {
+            if (!speechRecognition || isListening) return;
+
+            return new Promise((resolve, reject) => {
+                speechRecognition.onresult = (event) => {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0].transcript)
+                        .join('');
+                    resolve(transcript);
+                };
+
+                speechRecognition.onerror = (event) => {
+                    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                        console.error('Speech recognition error:', event.error);
+                        alert(`Voice Input Error: ${event.error}. Please try speaking again or check microphone permissions.`);
+                        reject(`Speech recognition error: ${event.error}`);
+                    } else {
+                        // Resolve with empty string if no speech was detected (user paused/stopped talking)
+                        resolve(""); 
+                    }
+                };
+
+                speechRecognition.onend = () => {
+                    updateRobotState('idle');
+                };
+
+                try {
+                    updateRobotState('listening');
+                    speechRecognition.start();
+                } catch (e) {
+                    console.error('Recognition start error:', e);
+                    reject(e);
                 }
+            })
+            .then(transcript => {
+                if (transcript.trim() === "") {
+                    // If no speech was detected, Interna prompts the user to speak
+                    speak("I didn't quite catch that. Please try to state your answer again.")
+                        .then(() => {
+                            // After speaking the prompt, immediately restart listening
+                            startListening().then(handleAnswer).catch(console.error);
+                        });
+                } else {
+                    handleAnswer(transcript);
+                }
+            })
+            .catch(error => {
+                console.error("Listening flow failed:", error);
+                // If a critical error occurred, wait and attempt next question flow
+                setTimeout(askNextQuestion, 2000); 
+            });
+        }
+        
+        // --- GEMINI API CALL HANDLERS ---
+
+        async function callGemini(systemPrompt, userQuery, responseSchema = null, title = "API Call") {
+            if (!GEMINI_API_KEY) {
+                console.error("GEMINI_API_KEY is missing. Cannot proceed with AI.");
+                return { error: "API Key Missing." };
             }
-        };
 
-        /**
-         * Converts total seconds to MM:SS format.
-         * @param {number} totalSeconds 
-         * @returns {string}
-         */
-        const formatTime = (totalSeconds) => {
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        };
-
-        /**
-         * Displays a status alert.
-         * @param {string} message 
-         * @param {'danger' | 'success' | 'warning'} type 
-         * @param {number} durationMs 
-         */
-        const showAlert = (message, type = 'danger', durationMs = 5000) => {
-            D.statusAlert.textContent = message;
-            D.statusAlert.className = `alert alert-${type}`;
-            D.statusAlert.classList.remove('hidden');
-            clearTimeout(STATE.alertTimeout);
-            STATE.alertTimeout = setTimeout(() => {
-                D.statusAlert.classList.add('hidden');
-            }, durationMs);
-        };
-
-        /**
-         * LLM API Helper Function. Calls Gemini API either via proxy or direct.
-         * @param {string} prompt The text prompt to send to the model.
-         * @param {boolean} isJson Whether the expected output is JSON.
-         * @returns {Promise<string>} The raw text response from the model.
-         */
-        const callGeminiAPI = async (prompt, isJson = false) => {
-            if (Date.now() < STATE.rateLimitTimer) {
-                throw new Error("Rate limit exceeded. Wait a few seconds before trying again.");
-            }
-            STATE.rateLimitTimer = Date.now() + 2000; // 2 second delay between calls
-
-            const modelName = "gemini-2.5-flash"; 
-            const maxOutputTokens = isJson ? 4096 : 2048; // Give more budget for complex JSON output
-
-            const baseBody = {
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
                 config: {
-                    maxOutputTokens: maxOutputTokens,
-                    temperature: isJson ? 0.2 : 0.7, 
-                    responseMimeType: isJson ? "application/json" : "text/plain",
+                    responseMimeType: responseSchema ? "application/json" : undefined,
+                    responseSchema: responseSchema || undefined,
                 },
             };
-            
-            try {
-                if (STATE.proxyEnabled) {
-                    // 1. Proxy Mode
-                    const response = await fetch(CONFIG.proxyEndpoint, {
+
+            let response = null;
+            let result = null;
+            let attempts = 0;
+            const maxRetries = 3;
+
+            while (attempts < maxRetries) {
+                attempts++;
+                try {
+                    response = await fetch(API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ prompt: prompt, model: modelName, isJson: isJson, options: baseBody.config }),
+                        body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) {
-                        const error = await response.json().catch(() => ({ message: response.statusText }));
-                        throw new Error(`Proxy/API Error: ${response.status} - ${error.message || response.statusText}`);
+                    if (response.ok) {
+                        result = await response.json();
+                        logDebug(title, payload, result);
+                        const textPart = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                        return textPart ? textPart : (responseSchema ? "{}" : "No content returned.");
+                    } else if (response.status === 429) {
+                        // Rate limit error, implement exponential backoff
+                        const delay = Math.pow(2, attempts) * 1000;
+                        console.warn(`Attempt ${attempts}: Rate limit hit. Retrying in ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        // Other HTTP error
+                        const errorText = await response.text();
+                        console.error(`Gemini API HTTP Error (${response.status}): ${errorText}`);
+                        return { error: `HTTP Error: ${response.status} - ${errorText}` };
                     }
-                    
-                    const result = await response.json();
-                    return result.text; // Expecting { text: "..." } from proxy
-                } else {
-                    // 2. Direct Client-Side API Call (Insecure, for demo only)
-                    if (!STATE.apiKey) {
-                        throw new Error("API Key not set in direct mode. Please update settings.");
-                    }
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${STATE.apiKey}`;
-
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(baseBody),
-                    });
-
-                    if (!response.ok) {
-                         const error = await response.json().catch(() => ({ message: response.statusText }));
-                         throw new Error(`Direct API Error: ${response.status} - ${error.error?.message || error.message}`);
-                    }
-
-                    const result = await response.json();
-                    // Extract text from the complex response structure
-                    return result.candidates[0].content.parts[0].text;
+                } catch (e) {
+                    // Network or JSON parsing error
+                    console.error(`Attempt ${attempts}: Network or JSON error.`, e);
+                    if (attempts === maxRetries) return { error: `Fetch failed: ${e.message}` };
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempts)); // Simple backoff
                 }
-            } catch (error) {
-                console.error("Gemini API Call Failed:", error);
-                showAlert(`API Error: ${error.message}. Check console for details.`, 'danger');
-                throw error; 
             }
-        };
+            return { error: "Failed after max retries." };
+        }
 
-        // --- Question Deck Management ---
+        async function generateQuestion() {
+            const currentQuestions = interviewLog.filter(i => i.type === 'question').length;
+            const userQuery = `Generate the next interview question for the role: ${roleAppliedFor}. Question count so far: ${currentQuestions}.`;
+            const systemPrompt = QUESTION_SYSTEM_PROMPT(roleAppliedFor, interviewLog);
 
-        /**
-         * Generates the initial deck of questions.
-         */
-        const generateQuestionDeck = async () => {
-            const { name, post, resumeText } = STATE.candidate;
-            const prompt = PROMPTS.QUESTION_GENERATION(name, post, resumeText);
-            
-            D.currentQuestionText.textContent = "Interna is generating the question deck...";
-            setRobotState(true);
+            const questionText = await callGemini("Question Generator", userQuery, null, systemPrompt);
+
+            if (questionText && typeof questionText === 'string') {
+                if (questionText.includes("INTERVIEW_COMPLETE")) {
+                    endInterview(false);
+                    return null;
+                }
+                return questionText.trim();
+            }
+            // Fallback for first question if API fails
+            return currentQuestions === 0 ? "Tell me a little bit about yourself and why you are interested in the intern role at Internanda." : "Could you tell me about a time you faced a challenge and how you overcame it?";
+        }
+
+        async function evaluateAnswer(question, transcript) {
+            const userQuery = `Candidate's answer: "${transcript}". Evaluate this answer against the question: "${question}".`;
+            const systemPrompt = EVALUATION_SYSTEM_PROMPT(question, roleAppliedFor);
+
+            const jsonString = await callGemini(systemPrompt, userQuery, EVALUATION_SCHEMA, "Answer Evaluator");
 
             try {
-                const rawJson = await callGeminiAPI(prompt, true);
-                const cleanJson = rawJson.replace(/```json\n|```/g, '').trim();
-                const questionsArray = JSON.parse(cleanJson);
-                
-                if (!Array.isArray(questionsArray) || questionsArray.length === 0) {
-                    throw new Error("LLM returned an invalid or empty question array.");
+                // The API is instructed to return a strict JSON string, so we must parse it.
+                const evaluation = JSON.parse(jsonString);
+                // Ensure required fields are present
+                if (typeof evaluation.score === 'number' && evaluation.summary) {
+                    return evaluation;
                 }
-
-                STATE.questions = questionsArray.map((q, index) => ({
-                    text: q,
-                    isFollowUp: false,
-                    timeLimit: 120, // Default 2 minutes per question
-                    timeTaken: 0,
-                    questionIndex: index + 1,
-                }));
-                STATE.totalQuestions = STATE.questions.length;
-                STATE.currentQ = -1; // Ready to load Q0
-
-                showAlert(`Question deck generated (${STATE.totalQuestions} questions). Starting interview.`, 'success', 3000);
-                startInterviewTimers();
-                nextQuestion();
-
-            } catch (error) {
-                console.error("Failed to generate question deck. Using fallback.", error);
-                showAlert('API failed to generate questions. Using local deterministic fallback.', 'warning', 10000);
-                useFallbackQuestions();
+                throw new Error("Parsed JSON is incomplete.");
+            } catch (e) {
+                console.error("Failed to parse evaluation JSON:", jsonString, e);
+                // Fallback score/evaluation if parsing fails
+                return {
+                    score: 5,
+                    summary: "Evaluation failed due to malformed AI response. Score is a default 5.",
+                    strengths: ["Spoke clearly."],
+                    weaknesses: ["AI evaluation failed."],
+                    deductions: ["Technical error: AI response was malformed."]
+                };
             }
-        };
+        }
 
-        /**
-         * Fallback question generator if API fails.
-         */
-        const useFallbackQuestions = () => {
-            const { name, post } = STATE.candidate;
-            const fallbackDeck = [
-                `Hello ${name}. Tell me a little bit about yourself and why you're interested in the ${post} internship at Internanda.`,
-                "Describe a time you faced a difficult problem in a project. How did you approach finding a solution?",
-                "What is one technical skill you are currently working to improve, and how are you practicing it?",
-                "Where do you see yourself professionally in the next three years?",
-                "Do you have any questions for me about Internanda or the internship role?"
-            ];
 
-            STATE.questions = fallbackDeck.map((q, index) => ({
-                text: q,
-                isFollowUp: false,
-                timeLimit: 120,
-                timeTaken: 0,
-                questionIndex: index + 1,
-            }));
-            STATE.totalQuestions = STATE.questions.length;
-            STATE.currentQ = -1;
-            
-            startInterviewTimers();
-            nextQuestion();
-        };
-        
-        // --- Interview Flow ---
+        // --- INTERVIEW FLOW LOGIC ---
 
-        const startInterviewSession = (event) => {
-            event.preventDefault();
-            if (!D.intakeForm.checkValidity()) {
-                D.intakeForm.reportValidity();
-                showAlert('Please fill in your name and post.', 'danger');
+        async function interviewLoop() {
+            if (!isInterviewActive || secondsRemaining <= 0) {
+                endInterview(false);
                 return;
             }
 
-            STATE.candidate.name = D.candidateName.value.trim();
-            STATE.candidate.post = D.postApplied.value.trim();
-            STATE.isInterviewActive = true;
-            STATE.timers.total = 0;
-            STATE.answers = [];
-            D.transcriptList.innerHTML = '';
-            
-            D.intakeScreen.classList.remove('active');
-            D.interviewScreen.classList.remove('hidden');
+            const question = await generateQuestion();
 
-            generateQuestionDeck();
-        };
+            if (!question) return; // Interview ended by AI
+
+            // 1. Interna speaks the question
+            await speak(question);
+            appendTranscript('interna', question);
+
+            // 2. Candidate answers (listening starts after speaking ends)
+            await speak(`Hello ${candidateName}, you may begin your answer now.`);
+            
+            // 3. Start listening and process the answer
+            await startListening();
+        }
         
-        const nextQuestion = () => {
-            if (!STATE.isInterviewActive) return;
-
-            // Stop timer for previous question
-            if (STATE.currentQ >= 0 && STATE.questions[STATE.currentQ]) {
-                stopQuestionTimer();
-            }
-
-            // Check for next question
-            STATE.currentQ++;
-            if (STATE.currentQ >= STATE.totalQuestions) {
-                endInterview();
-                return;
-            }
-
-            const question = STATE.questions[STATE.currentQ];
-            
-            // UI Update: Question
-            D.currentQuestionText.textContent = `Q${STATE.currentQ + 1}: ${question.text}`;
-            D.candidateAnswer.value = '';
-            D.followupArea.classList.add('hidden');
-            D.skipFollowupBtn.classList.add('hidden');
-
-            setRobotState(false);
-            startQuestionTimer(question.timeLimit);
-        };
-        
-        /**
-         * Submits the candidate's answer and processes it via the LLM.
-         */
-        const submitAnswer = async () => {
-            const rawAnswer = D.candidateAnswer.value.trim();
-            if (rawAnswer.length < 10) {
-                showAlert('Please provide a more substantial answer (min 10 characters).', 'warning');
-                return;
-            }
-
-            stopQuestionTimer();
-            setRobotState(true);
-            D.robotStatus.textContent = "Interna is analyzing your answer...";
-            D.submitAnswerBtn.textContent = 'Analyzing...';
-            D.submitAnswerBtn.disabled = true;
-
-            const currentQ = STATE.questions[STATE.currentQ];
-            const originalQuestionText = currentQ.text;
-            
-            // Create answer object with initial data
-            const newAnswer = {
-                question: originalQuestionText,
-                rawAnswer: rawAnswer.substring(0, CONFIG.maxAnswerChars),
-                timeTaken: formatTime(currentQ.timeTaken),
-                summary: 'Analyzing...',
-                score: '...',
-                reason: 'Analyzing...',
-                strengths: [],
-                weaknesses: [],
-                deductionBreakdown: [],
-            };
-            STATE.answers.push(newAnswer);
-
-            // Add placeholder to transcript
-            const transcriptItem = createTranscriptItem(STATE.currentQ, newAnswer, true);
-            D.transcriptList.prepend(transcriptItem);
-            
-            // --- LLM Calls ---
-            const scorePrompt = PROMPTS.ANSWER_SUMMARY_SCORING(originalQuestionText, newAnswer.rawAnswer, STATE.candidate.post);
-            const followupPrompt = PROMPTS.FOLLOW_UP_SUGGESTION(originalQuestionText, newAnswer.rawAnswer);
-            
-            let scoreResult;
-            let followUpResult;
-
-            try {
-                // 1. Scoring & Summary Call
-                const rawScoreJson = await callGeminiAPI(scorePrompt, true);
-                const cleanScoreJson = rawScoreJson.replace(/```json\n|```/g, '').trim();
-                scoreResult = JSON.parse(cleanScoreJson);
-                
-                // Update newAnswer with results
-                newAnswer.summary = scoreResult.summary || 'Summary not provided.';
-                newAnswer.score = scoreResult.score || 5; 
-                newAnswer.reason = scoreResult.reason || 'Reason not provided.';
-                newAnswer.strengths = scoreResult.strengths || [];
-                newAnswer.weaknesses = scoreResult.weaknesses || [];
-                newAnswer.deductionBreakdown = scoreResult.deductionBreakdown || [];
-
-                // Update transcript item immediately
-                updateTranscriptItem(transcriptItem, newAnswer);
-                showAlert(`Q${STATE.currentQ + 1} analyzed (Score: ${newAnswer.score}/10).`, 'success', 3000);
-                
-                // 2. Follow-up Call (Runs after scoring)
-                D.robotStatus.textContent = "Interna is considering a follow-up...";
-                followUpResult = await callGeminiAPI(followupPrompt, false);
-                const followUpText = followUpResult.trim();
-
-                if (followUpText && followUpText.length > 5) {
-                    D.suggestedFollowupText.textContent = followUpText;
-                    D.followupArea.classList.remove('hidden');
-                    D.skipFollowupBtn.classList.remove('hidden');
-                    D.submitAnswerBtn.textContent = 'Proceed to Next Question';
-                    D.submitAnswerBtn.onclick = nextQuestion; // Temporarily change button action
-                } else {
-                    // No follow-up suggested, proceed directly
-                    D.submitAnswerBtn.textContent = 'Submit Answer';
-                    D.submitAnswerBtn.onclick = submitAnswer; // Reset button action
-                    nextQuestion();
+        async function handleAnswer(transcript) {
+            if (!isInterviewActive || !currentQuestion || !transcript.trim()) {
+                // If transcript is empty, the startListening promise was likely resolved by no-speech detection
+                if (transcript.trim() === "") {
+                    // Already handled by startListening recursive call on empty transcript, so just wait
+                    updateRobotState('idle');
+                    return; 
                 }
-
-            } catch (error) {
-                console.error("LLM Processing Failed:", error);
-                newAnswer.summary = "ERROR: Analysis failed. See console.";
-                newAnswer.score = Math.max(1, newAnswer.score - 2); // Simple heuristic penalty
-                newAnswer.reason = "API analysis failed. A score penalty was applied.";
-                updateTranscriptItem(transcriptItem, newAnswer);
-                showAlert(`API processing failed for Q${STATE.currentQ + 1}.`, 'danger', 10000);
-                
-                // If API fails, just skip follow-up and proceed
-                nextQuestion(); 
-            } finally {
-                setRobotState(false);
-                D.submitAnswerBtn.disabled = false;
+                // If critical data is missing, move to next question flow
+                askNextQuestion();
+                return;
             }
-        };
 
-        /**
-         * Takes the suggested follow-up and inserts it as the next question.
-         */
-        const useFollowUp = () => {
-            const followUpText = D.suggestedFollowupText.textContent;
-            if (!followUpText) return;
+            updateRobotState('idle');
+            // Log the candidate's transcribed answer
+            appendTranscript('candidate', transcript);
 
-            // Insert new question object right after the current one
-            STATE.questions.splice(STATE.currentQ + 1, 0, {
-                text: followUpText,
-                isFollowUp: true,
-                timeLimit: 90, // Shorter time limit for follow-ups
-                timeTaken: 0,
-                questionIndex: STATE.currentQ + 1.1 // Minor index change for sorting/display clarity
-            });
-            STATE.totalQuestions = STATE.questions.length;
+            // 4. Evaluate the answer
+            statusMessage.textContent = 'Analyzing response...';
+            const evaluation = await evaluateAnswer(currentQuestion, transcript);
+            appendEvaluation(evaluation);
+            currentQuestion = null; // Clear question reference
 
-            // Update UI for question flow
-            D.submitAnswerBtn.textContent = 'Submit Answer';
-            D.submitAnswerBtn.onclick = submitAnswer; 
-            D.skipFollowupBtn.classList.add('hidden');
+            // 5. Speak a confirmation/transition and ask the next question
+            let transitionPhrase = evaluation.score >= 7 
+                ? "That's a strong response. Let's move on." 
+                : "Thank you for your thoughts. Moving to the next area.";
             
-            nextQuestion();
-        };
+            await speak(transitionPhrase);
 
+            // Continue the loop
+            interviewLoop();
+        }
 
-        // --- Timer Controls ---
-        const startInterviewTimers = () => {
-            if (STATE.timers.totalInterval) return;
+        async function startInterview() {
+            candidateName = document.getElementById('candidate-name').value.trim() || "Candidate";
+            roleAppliedFor = document.getElementById('role-applied-for').value.trim() || "Intern";
             
-            STATE.timers.totalInterval = setInterval(() => {
-                STATE.timers.total++;
-                D.totalTimer.textContent = formatTime(STATE.timers.total);
+            if (!GEMINI_API_KEY) {
+                alert("Please set the GEMINI_API_KEY in the script before starting the interview.");
+                return;
+            }
 
-                if (STATE.timers.total >= CONFIG.maxInterviewMinutes * 60) {
-                    endInterview(true); // Auto-end
+            // UI transition
+            document.getElementById('intro-section').classList.add('hidden');
+            document.getElementById('interview-section').classList.remove('hidden');
+            
+            isInterviewActive = true;
+            interviewLog = [];
+            currentQuestion = null;
+
+            // Start Timer
+            secondsRemaining = MAX_INTERVIEW_TIME_SECONDS;
+            updateTimerDisplay();
+            interviewTimer = setInterval(() => {
+                secondsRemaining--;
+                updateTimerDisplay();
+                if (secondsRemaining <= 0) {
+                    endInterview(false); // Time's up
                 }
             }, 1000);
-        };
 
-        const stopTimers = () => {
-            clearInterval(STATE.timers.totalInterval);
-            clearInterval(STATE.timers.questionInterval);
-            STATE.timers.totalInterval = null;
-            STATE.timers.questionInterval = null;
-        };
-        
-        const startQuestionTimer = (timeLimitSeconds) => {
-            clearInterval(STATE.timers.questionInterval);
-            STATE.timers.question = timeLimitSeconds;
+            // Initial greeting and first question
+            const initialGreeting = `Hello ${candidateName}, welcome to the interview for the ${roleAppliedFor} role at Internanda. I am Interna. I will now ask you the first question.`;
+            appendTranscript('interna', initialGreeting);
+
+            // Start the main loop after the greeting
+            await speak(initialGreeting);
+            interviewLoop();
+        }
+
+        function endInterview(userInitiated) {
+            if (!isInterviewActive) return;
+
+            isInterviewActive = false;
+            clearInterval(interviewTimer);
+            if (speechRecognition) speechRecognition.abort();
+            updateRobotState('idle');
+
+            // Final message
+            const finalMessage = userInitiated
+                ? "The interview has been manually ended. Calculating results now."
+                : (secondsRemaining <= 0 
+                    ? "Time is up. The interview has ended. Calculating results."
+                    : "The final question has been asked and answered. Calculating your overall score.");
             
-            // Initialize time taken for this Q
-            STATE.questions[STATE.currentQ].timeTaken = 0;
+            speak(finalMessage);
+            appendTranscript('interna', finalMessage);
 
-            const questionStart = new Date().getTime();
-
-            STATE.timers.questionInterval = setInterval(() => {
-                const elapsedSeconds = Math.floor((new Date().getTime() - questionStart) / 1000);
-                STATE.questions[STATE.currentQ].timeTaken = elapsedSeconds;
-
-                const remainingTime = Math.max(0, timeLimitSeconds - elapsedSeconds);
-                D.questionTimer.textContent = formatTime(remainingTime);
-
-                if (remainingTime <= 0) {
-                    clearInterval(STATE.timers.questionInterval);
-                    // Force submission if time runs out
-                    D.candidateAnswer.value += " [TIME LIMIT REACHED - ANSWER CUT SHORT]";
-                    submitAnswer();
-                }
-                
-                // Change color for countdown warning
-                D.questionTimer.style.color = remainingTime <= 10 ? 'var(--color-danger)' : 'var(--color-dark)';
-            }, 1000);
-        };
-
-        const stopQuestionTimer = () => {
-            clearInterval(STATE.timers.questionInterval);
-            D.questionTimer.style.color = 'var(--color-dark)';
-        };
-        
-        /**
-         * Ends the interview and proceeds to the results screen.
-         * @param {boolean} autoEnded 
-         */
-        const endInterview = (autoEnded = false) => {
-            stopTimers();
-            STATE.isInterviewActive = false;
+            // UI transition
+            document.getElementById('interview-section').classList.add('hidden');
+            document.getElementById('results-section').classList.remove('hidden');
             
-            if (autoEnded) {
-                showAlert(`Interview automatically ended after ${CONFIG.maxInterviewMinutes} minutes.`, 'warning', 8000);
-            } else {
-                showAlert('Interview ended by candidate/interviewer.', 'warning', 5000);
-            }
-
-            // Switch screen
-            D.interviewScreen.classList.add('hidden');
-            D.resultsScreen.classList.remove('hidden');
-
+            // Generate Results
             displayResults();
-        };
+        }
 
-        // --- UI Rendering ---
+        function updateTimerDisplay() {
+            const minutes = Math.floor(secondsRemaining / 60);
+            const seconds = secondsRemaining % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
 
-        /**
-         * Creates an HTML element for a transcript item.
-         */
-        const createTranscriptItem = (qIndex, answerData, isLoading = false) => {
-            const div = document.createElement('div');
-            div.className = 'transcript-item';
-            div.id = `transcript-item-${qIndex}`;
-
-            let scoreHtml = answerData.score && answerData.score !== '...'
-                ? `<strong>Score: ${answerData.score}/${CONFIG.maxScore}</strong> (${answerData.reason})`
-                : isLoading ? `Score: ... <span class="loading-spinner"></span>` : 'Score: N/A';
-
-            let html = `
-                <h4>${qIndex + 1}. ${answerData.question}</h4>
-                <p><strong>Raw Answer:</strong> ${answerData.rawAnswer}</p>
-                
-                <div class="transcript-meta">
-                    <span>Time: <strong>${answerData.timeTaken}</strong></span>
-                </div>
-                
-                <div style="margin-top: 10px; padding-left: 10px; border-left: 2px solid var(--color-primary);">
-                    <p class="summary-text" style="font-weight: 500;"><strong>Summary:</strong> ${answerData.summary}</p>
-                    <p style="margin-top: 5px;">${scoreHtml}</p>
-                </div>
-            `;
-            div.innerHTML = html;
-            return div;
-        };
-        
-        /**
-         * Updates an existing transcript item with final API data.
-         */
-        const updateTranscriptItem = (itemElement, answerData) => {
-            const scoreClass = answerData.score > CONFIG.passThreshold ? 'pass-message' : 'fail-message';
-            const scoreHtml = `
-                <strong class="${scoreClass}">Score: ${answerData.score}/${CONFIG.maxScore}</strong> 
-                (<span style="font-style: italic;">${answerData.reason}</span>)
-            `;
-
-            itemElement.querySelector('.summary-text').innerHTML = `<strong>Summary:</strong> ${answerData.summary}`;
-            
-            const scoreP = itemElement.querySelector('div > p:nth-child(2)');
-            if (scoreP) scoreP.innerHTML = scoreHtml;
-
-            const spinner = itemElement.querySelector('.loading-spinner');
-            if (spinner) spinner.remove();
-        };
-
-        const displayResults = () => {
-            const totalScore = STATE.answers.reduce((sum, a) => sum + (a.score || 0), 0);
-            const avgScore = STATE.answers.length > 0 ? (totalScore / STATE.answers.length).toFixed(1) : 'N/A';
-            const finalScoreValue = parseFloat(avgScore) || 0;
-            const isPass = finalScoreValue > CONFIG.passThreshold;
-            const totalDeduction = CONFIG.maxScore - finalScoreValue;
-
-            D.resultCandidateName.textContent = STATE.candidate.name;
-            D.finalScore.textContent = avgScore;
-            D.finalScore.className = isPass ? 'score-display' : 'score-display fail';
-
-            // 1. Final Message
-            if (isPass) {
-                D.finalMessage.innerHTML = `<span class="pass-message">Congratulations, ${STATE.candidate.name}! You have been selected for the next round!</span> Your performance was exceptional for an internship candidate.`;
-            } else {
-                D.finalMessage.innerHTML = `<span class="fail-message">Thank you for participating, ${STATE.candidate.name}.</span> While your score was ${avgScore}/${CONFIG.maxScore}, we encourage you to review your weaknesses and try again!`;
-            }
-            
-            // 2. Deduction Breakdown
-            D.totalDeductionAmount.textContent = `${totalDeduction.toFixed(1)}`;
-            D.deductionBreakdown.innerHTML = '';
-            
-            const allDeductions = STATE.answers.flatMap(a => a.deductionBreakdown);
-            const groupedDeductions = allDeductions.reduce((acc, item) => {
-                // Use reason as key for simplicity
-                const key = item.reason;
-                acc[key] = (acc[key] || 0) + (item.deduction || 0);
-                return acc;
-            }, {});
-
-            if (Object.keys(groupedDeductions).length > 0) {
-                for (const reason in groupedDeductions) {
-                    const li = document.createElement('li');
-                    li.className = 'deduction-item';
-                    li.innerHTML = `<span class="reason">${reason}</span><span class="amount">-${groupedDeductions[reason].toFixed(1)}</span>`;
-                    D.deductionBreakdown.appendChild(li);
-                }
-            } else {
-                // Perfect score or no data
-                const li = document.createElement('li');
-                li.className = 'deduction-item';
-                li.innerHTML = '<span class="reason">No major deductions recorded. Excellent performance!</span><span class="amount">0.0</span>';
-                D.deductionBreakdown.appendChild(li);
-            }
-            
-            // 3. Full Transcript and Resources
-            D.resultTranscriptList.innerHTML = '';
-            STATE.answers.forEach((answer, index) => {
-                const item = document.createElement('div');
-                item.className = 'transcript-item';
-                item.style.border = '1px solid var(--color-border)';
-                item.style.padding = '15px';
-                item.style.marginBottom = '15px';
-                
-                item.innerHTML = `
-                    <h4>Q${index + 1}: ${answer.question}</h4>
-                    <p style="font-style: italic; color: var(--color-secondary);">Time Taken: ${answer.timeTaken}</p>
-                    
-                    <h5 style="margin-top: 10px;">Summary (${answer.score}/${CONFIG.maxScore}):</h5>
-                    <p style="font-weight: 500;">${answer.summary}</p>
-
-                    <h5 style="margin-top: 10px;">Strengths & Weaknesses:</h5>
-                    <p style="font-size: 0.9rem;"><strong>Strengths:</strong> ${answer.strengths.join('; ') || 'N/A'}</p>
-                    <p style="font-size: 0.9rem;"><strong>Weaknesses:</strong> ${answer.weaknesses.join('; ') || 'N/A'}</p>
-                `;
-                D.resultTranscriptList.appendChild(item);
-            });
-            
-            // 4. Next Steps
-            D.nextStepsText.textContent = isPass 
-                ? "Your application will now proceed to the final human review stage. Check your email for further instructions."
-                : "We highly recommend reviewing fundamental concepts before applying again. Here are some relevant resources for the 'Intern' role:";
-            
-            // Set up download handlers
-            const reportData = { metadata: { ...STATE.candidate, finalScore: avgScore, maxScore: CONFIG.maxScore, totalDuration: formatTime(STATE.timers.total) }, qa_transcript: STATE.answers, deduction_summary: groupedDeductions };
-            const filenameBase = `${STATE.candidate.name.replace(/\s/g, '_')}_${STATE.candidate.post.replace(/\s/g, '_')}_Interna_Report`;
-
-            D.downloadJsonBtn.onclick = () => downloadFile(JSON.stringify(reportData, null, 2), `${filenameBase}.json`, 'application/json');
-            D.downloadCsvBtn.onclick = () => downloadFile(convertToCsv(reportData), `${filenameBase}.csv`, 'text/csv');
-            D.printPdfBtn.onclick = () => window.print(); 
-            D.startNewBtn.onclick = () => window.location.reload(); 
-        };
-
-        // --- Data Handling & Utilities ---
-
-        const handleResumeUpload = () => {
-            const file = D.resumeUpload.files[0];
-            if (!file) {
-                STATE.candidate.resumeText = "";
-                D.resumePreview.textContent = '';
+        function displayResults() {
+            const evaluations = interviewLog.filter(i => i.type === 'evaluation').map(i => i.data);
+            if (evaluations.length === 0) {
+                document.getElementById('final-score').textContent = "N/A";
+                document.getElementById('final-verdict').textContent = "No questions were evaluated.";
+                document.getElementById('final-verdict').className = "mt-4 text-xl font-bold text-slate-400";
                 return;
             }
 
-            const reader = new FileReader();
+            const totalScore = evaluations.reduce((sum, e) => sum + e.score, 0);
+            const finalScore = Math.round((totalScore / evaluations.length) * 10) / 10;
+            const allDeductions = evaluations.flatMap(e => e.deductions).filter((value, index, self) => self.indexOf(value) === index); // Unique deductions
 
-            reader.onload = (e) => {
-                const text = e.target.result;
-                // Simple sanitization and truncation
-                STATE.candidate.resumeText = text.replace(/[\n\r\t]+/g, ' ').trim().substring(0, 3000);
-                D.resumePreview.textContent = `Resume text extracted (${STATE.candidate.resumeText.length} chars).`;
-            };
+            // Display overall score and verdict
+            const finalScoreEl = document.getElementById('final-score');
+            const finalVerdictEl = document.getElementById('final-verdict');
+            finalScoreEl.textContent = finalScore.toFixed(1);
 
-            reader.onerror = () => {
-                console.error("Error reading file.");
-                STATE.candidate.resumeText = `File: ${file.name}, Type: ${file.type}.`;
-                D.resumePreview.textContent = `Error reading file. Using metadata only.`;
-            };
-
-            // Attempt to read common text formats
-            if (file.type.match('text.*') || file.type.match('application/json')) {
-                reader.readAsText(file);
+            let verdictText, verdictColor;
+            if (finalScore > 6.0) {
+                verdictText = "Congratulations, you are selected! Your performance was excellent.";
+                verdictColor = 'text-green-500';
             } else {
-                // Fallback for PDFs/DOCs (no client-side extraction)
-                STATE.candidate.resumeText = `File: ${file.name} uploaded. Using filename/metadata as context.`;
-                D.resumePreview.textContent = `Non-text file uploaded. Using metadata as context.`;
+                verdictText = "Try Again — Improve using these suggestions. We encourage you to reapply.";
+                verdictColor = 'text-red-500';
             }
-        };
+            finalVerdictEl.textContent = verdictText;
+            finalVerdictEl.className = `mt-4 text-xl font-bold ${verdictColor}`;
 
+            // Display unique deduction reasons
+            const deductionListEl = document.getElementById('deduction-list');
+            deductionListEl.innerHTML = allDeductions.length > 0 
+                ? allDeductions.map(d => `<li>${d}</li>`).join('') 
+                : '<li>No significant recurring deductions noted.</li>';
 
-        const convertToCsv = (data) => {
-            const qa = data.qa_transcript;
-            if (qa.length === 0) return "No data to report.";
-            
-            const headers = [
-                "Question Index", "Question", "Raw Answer", "Score (1-10)", "Reason", 
-                "Summary", "Time Taken", "Strengths", "Weaknesses"
-            ];
-            
-            const rows = qa.map((a, i) => [
-                i + 1,
-                `"${a.question.replace(/"/g, '""')}"`,
-                `"${a.rawAnswer.replace(/"/g, '""')}"`,
-                a.score,
-                `"${a.reason.replace(/"/g, '""')}"`,
-                `"${a.summary.replace(/"/g, '""')}"`,
-                a.timeTaken,
-                `"${a.strengths.join('; ').replace(/"/g, '""')}"`,
-                `"${a.weaknesses.join('; ').replace(/"/g, '""')}"`
-            ]);
+            // Display detailed breakdown
+            const breakdownPanel = document.getElementById('breakdown-panel');
+            breakdownPanel.innerHTML = ''; // Clear previous content
 
-            let csvString = headers.join(',') + "\n";
-            rows.forEach(row => {
-                csvString += row.join(',') + "\n";
+            interviewLog.forEach((item, index) => {
+                if (item.type === 'evaluation') {
+                    const questionIndex = interviewLog.slice(0, index).filter(i => i.type === 'question').length;
+                    const questionItem = interviewLog[index - 2]; // Q is before A, A is before E
+                    const answerItem = interviewLog[index - 1];
+                    const evalData = item.data;
+
+                    const card = document.createElement('div');
+                    card.className = 'glass-card p-4 bg-slate-800/80 space-y-3';
+                    card.innerHTML = `
+                        <h3 class="text-xl font-semibold text-accent">Question ${questionIndex}: ${questionItem ? questionItem.text : 'N/A'}</h3>
+                        <p class="text-sm text-slate-400"><strong>Your Transcript:</strong> ${answerItem ? answerItem.text : 'N/A'}</p>
+                        <div class="border-t border-slate-700 pt-3 space-y-2">
+                            <h4 class="font-bold text-lg flex justify-between items-center">
+                                Score:
+                                <span class="text-3xl font-mono ${evalData.score >= 7 ? 'text-green-400' : evalData.score >= 4 ? 'text-yellow-400' : 'text-red-400'}">${evalData.score}/10</span>
+                            </h4>
+                            <p class="text-sm italic text-slate-300"><strong>Summary:</strong> ${evalData.summary}</p>
+                            <div class="flex gap-4 text-sm">
+                                <div>
+                                    <h5 class="font-semibold text-green-300">Strengths:</h5>
+                                    <ul class="list-disc list-inside text-green-200">
+                                        ${evalData.strengths.map(s => `<li>${s}</li>`).join('')}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-red-300">Deductions:</h5>
+                                    <ul class="list-disc list-inside text-red-200">
+                                        ${evalData.deductions.map(d => `<li class="text-red-400">${d}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    breakdownPanel.appendChild(card);
+                }
             });
+            
+            // Re-render icons on the results page
+            lucide.createIcons();
+        }
 
-            return csvString;
-        };
+        // --- DOWNLOAD UTILITIES ---
 
-        const downloadFile = (content, filename, contentType) => {
-            const blob = new Blob([content], { type: contentType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        };
+        function getResultsObject() {
+            const evaluations = interviewLog.filter(i => i.type === 'evaluation').map(i => i.data);
+            const totalScore = evaluations.reduce((sum, e) => sum + e.score, 0);
+            const finalScore = evaluations.length > 0 ? Math.round((totalScore / evaluations.length) * 10) / 10 : 0;
+            const fullTranscript = interviewLog.map(item => {
+                const prefix = item.type === 'question' ? 'Interna (Q): ' : item.type === 'answer' ? `${candidateName} (A): ` : 'Evaluation: ';
+                return prefix + (item.text || JSON.stringify(item.data, null, 2));
+            }).join('\n\n');
+            
+            const detailedBreakdown = interviewLog.map((item, index) => {
+                 if (item.type === 'evaluation') {
+                    const questionItem = interviewLog[index - 2];
+                    const answerItem = interviewLog[index - 1];
+                    return {
+                        question: questionItem?.text,
+                        candidateAnswer: answerItem?.text,
+                        evaluation: item.data
+                    };
+                }
+                return null;
+            }).filter(i => i !== null);
 
-        // --- Settings and Initialization ---
 
-        const loadSettings = () => {
-            const storedSettings = localStorage.getItem('interna_settings');
-            if (storedSettings) {
-                const settings = JSON.parse(storedSettings);
-                STATE.apiMode = settings.apiMode;
-                STATE.apiKey = settings.apiKey;
-                STATE.proxyEnabled = settings.apiMode === 'proxy';
-                D.apiMode.value = settings.apiMode;
-                D.apiKeyInput.value = settings.apiKey;
+            return {
+                metadata: {
+                    candidateName,
+                    roleAppliedFor,
+                    interviewDuration: MAX_INTERVIEW_TIME_SECONDS - secondsRemaining,
+                    totalQuestions: evaluations.length,
+                    finalScore,
+                    timestamp: new Date().toISOString()
+                },
+                finalVerdict: finalScore > 6.0 ? "Selected" : "Try Again",
+                breakdown: detailedBreakdown,
+                fullInterviewLog: interviewLog,
+                fullTranscript: fullTranscript
+            };
+        }
+
+        function downloadResults(type) {
+            const results = getResultsObject();
+            const filenameBase = `Internanda_Interview_Result_${candidateName.replace(/\s/g, '_')}`;
+
+            if (type === 'json') {
+                const json = JSON.stringify(results, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filenameBase}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else if (type === 'pdf') {
+                // Use browser's print functionality for PDF generation (with custom CSS for clean output)
+                window.print();
             }
+        }
 
-            // Load Prompts
-            PROMPTS.QUESTION_GENERATION = localStorage.getItem('prompt_question') || DEFAULT_PROMPTS.QUESTION_GENERATION;
-            PROMPTS.ANSWER_SUMMARY_SCORING = localStorage.getItem('prompt_summary') || DEFAULT_PROMPTS.ANSWER_SUMMARY_SCORING;
-            PROMPTS.FOLLOW_UP_SUGGESTION = localStorage.getItem('prompt_followup') || DEFAULT_PROMPTS.FOLLOW_UP_SUGGESTION;
-            
-            D.promptQuestion.value = PROMPTS.QUESTION_GENERATION.toString().split('\n').slice(1, -1).join('\n').trim();
-            D.promptSummary.value = PROMPTS.ANSWER_SUMMARY_SCORING.toString().split('\n').slice(1, -1).join('\n').trim();
-            D.promptFollowup.value = PROMPTS.FOLLOW_UP_SUGGESTION.toString().split('\n').slice(1, -1).join('\n').trim();
-
-            updateSettingsUI();
+        // Initialize voices when they are loaded
+        window.speechSynthesis.onvoiceschanged = function() {
+            // Voices loaded
+            console.log("Speech synthesis voices loaded.");
         };
 
-        const updateSettingsUI = () => {
-             const isDirect = D.apiMode.value === 'direct';
-             D.apiKeyGroup.style.display = isDirect ? 'block' : 'none';
-             D.showSettingsBtn.setAttribute('aria-expanded', !D.settingsPanel.classList.contains('hidden'));
-        };
-
-        const saveSettings = () => {
-            STATE.apiMode = D.apiMode.value;
-            STATE.apiKey = D.apiKeyInput.value.trim();
-            STATE.proxyEnabled = STATE.apiMode === 'proxy';
-
-            localStorage.setItem('interna_settings', JSON.stringify({
-                apiMode: STATE.apiMode,
-                apiKey: STATE.apiKey
-            }));
-            
-            showAlert('Settings saved!', 'success', 3000);
-            D.settingsPanel.classList.add('hidden');
-        };
-
-        const savePrompts = () => {
-            PROMPTS.QUESTION_GENERATION = D.promptQuestion.value;
-            PROMPTS.ANSWER_SUMMARY_SCORING = D.promptSummary.value;
-            PROMPTS.FOLLOW_UP_SUGGESTION = D.promptFollowup.value;
-
-            localStorage.setItem('prompt_question', PROMPTS.QUESTION_GENERATION);
-            localStorage.setItem('prompt_summary', PROMPTS.ANSWER_SUMMARY_SCORING);
-            localStorage.setItem('prompt_followup', PROMPTS.FOLLOW_UP_SUGGESTION);
-            
-            showAlert('Prompt templates saved! (Will take effect on next interview)', 'success', 3000);
-        };
-        
-        const runSelfTest = async () => {
-            D.selfTestResults.innerHTML = "Running tests... <span class='loading-spinner'></span>";
-            const results = [];
-            const testPrompt = PROMPTS.TEST_PROMPT;
-            
-            results.push(`✅ Client-side UI initialized.`);
-            results.push(`✅ API Mode: <strong>${STATE.apiMode}</strong> (${STATE.proxyEnabled ? 'Proxy Enabled' : 'Direct Enabled'})`);
-
-            try {
-                const testResult = await callGeminiAPI(testPrompt, false);
-                results.push(`✅ API Call successful! Response: "${testResult.trim()}"`);
-                showAlert('Self-Test complete: API connected.', 'success', 5000);
-            } catch (error) {
-                results.push(`❌ API Call Failed. Check Console. Error: ${error.message}`);
-                showAlert('Self-Test failed one or more API checks.', 'danger', 10000);
-            }
-
-            D.selfTestResults.innerHTML = results.map(r => `<p style="margin-top: 4px;">${r}</p>`).join('');
-        };
-
-
-        // --- Event Listeners ---
-        const setupListeners = () => {
-            D.intakeForm.addEventListener('submit', startInterviewSession);
-            D.resumeUpload.addEventListener('change', handleResumeUpload);
-            D.submitAnswerBtn.addEventListener('click', submitAnswer);
-            D.useFollowupBtn.addEventListener('click', useFollowUp);
-            D.skipFollowupBtn.addEventListener('click', () => {
-                D.submitAnswerBtn.textContent = 'Submit Answer';
-                D.submitAnswerBtn.onclick = submitAnswer; 
-                nextQuestion();
-            });
-            D.endInterviewBtn.addEventListener('click', () => endInterview(false));
-            
-            // Settings listeners
-            D.showSettingsBtn.addEventListener('click', () => {
-                D.settingsPanel.classList.toggle('hidden');
-                updateSettingsUI();
-            });
-            D.saveSettingsBtn.addEventListener('click', saveSettings);
-            D.apiMode.addEventListener('change', updateSettingsUI);
-            D.runSelfTestBtn.addEventListener('click', runSelfTest);
-            D.savePromptsBtn.addEventListener('click', savePrompts);
-        };
-        
-        // --- Initialization ---
+        // --- INITIALIZATION ---
+        // Ensure initial state is set up for the UI
         document.addEventListener('DOMContentLoaded', () => {
-            loadSettings();
-            setupListeners();
-            setRobotState(true); // Initial state
-            D.robotStatus.textContent = "Interna is waiting for you to begin the session.";
-            
-            if (STATE.apiMode === 'direct' && !STATE.apiKey) {
-                 showAlert('API Key is missing in Direct Mode. Open Settings to set it.', 'danger', 15000);
-            }
+             // Sign in logic (required by Canvas, even if not used for persistence)
+            // Note: Since Firestore dependencies are not included, this is only a placeholder for auth setup.
+             console.log("Canvas Auth Initialized Placeholder.");
         });
+
     </script>
 </body>
 </html>
