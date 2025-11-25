@@ -41,7 +41,17 @@
 
         /* Animations */
         @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes slideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        @keyframes blob {
+            0%, 100% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
         .animate-fadeIn { animation: fadeIn 0.5s ease-out; }
+        .animate-slideUp { animation: slideUp 0.5s ease-out; }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
     </style>
     
     <script type="importmap">
@@ -59,7 +69,7 @@
     </div>
 
     <script type="module">
-        // script.js (Refactored to be robust with permission step)
+        // script.js (Refactored for strict permission flow)
 
         import { GoogleGenAI, Type } from 'https://aistudiocdn.com/@google/genai@^1.30.0';
 
@@ -72,7 +82,7 @@
         // --- TYPES & CONSTANTS ---
         const AppStep = {
             FORM: 'FORM',
-            PERMISSION: 'PERMISSION', // Re-introduced permission step for reliability
+            PERMISSION: 'PERMISSION', // Step 2: Ask for permissions
             INTERVIEW: 'INTERVIEW',
             EVALUATING: 'EVALUATING',
             RESULT: 'RESULT',
@@ -188,7 +198,7 @@
             
             const steps = [
                 { id: AppStep.FORM, label: 'Profile' },
-                { id: AppStep.PERMISSION, label: 'Check' }, // Added back for flow clarity
+                { id: AppStep.PERMISSION, label: 'Check' }, // Step 2
                 { id: AppStep.INTERVIEW, label: 'Live' },
                 { id: AppStep.EVALUATING, label: 'Review' },
                 { id: AppStep.RESULT, label: 'Result' },
@@ -257,7 +267,7 @@
             }
         }
 
-        // --- RENDER FORM SCREEN ---
+        // --- RENDER FORM SCREEN (unchanged) ---
         function renderCandidateForm() {
             const PREDEFINED_ROLES = ["Python Developer", "Frontend Engineer", "Backend Engineer", "Full Stack Developer", "Data Scientist"];
             const LANGUAGES = ["English", "Spanish", "French", "German", "Hindi", "Japanese"];
@@ -764,15 +774,15 @@
                 // 1. Store candidate data
                 updateState({ 
                     candidate: { name, jobDescription, field, language },
-                    deviceStatus: 'Awaiting Permission...', 
+                    deviceStatus: 'Awaiting Permission...', // Reset status
                 });
 
                 // 2. Transition to Permission screen to ask for mic access (prevents synchronous crash)
                 updateState({ step: AppStep.PERMISSION }); 
                 
             } catch (error) {
-                console.error("SYNCHRONOUS FORM SUBMISSION ERROR:", error);
-                alert("CRITICAL ERROR: Failed during form processing. Please check console.");
+                console.error("SYNCHRONOUS FORM SUBMISSION CRASH:", error);
+                alert("CRITICAL ERROR: Failed to process form submission (Synchronous Crash). Please check console.");
             }
         }
 
