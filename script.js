@@ -11,7 +11,7 @@ const GEMINI_API_KEY = "AIzaSyC5Cr8zfgd0yr7AwsqK4smq8-RJin2S9ng";
 // --- TYPES & CONSTANTS ---
 const AppStep = {
     FORM: 'FORM',
-    // INSTRUCTIONS step removed as per user request.
+    // INSTRUCTIONS step permanently removed.
     INTERVIEW: 'INTERVIEW',
     EVALUATING: 'EVALUATING',
     RESULT: 'RESULT',
@@ -26,7 +26,7 @@ const AudioUtils = {
         return btoa(binary);
     },
     decode: (base64) => {
-        const binaryString = atob(base64);
+        const binaryString = atob(base6        4);
         const len = binaryString.length;
         const bytes = new Uint8Array(len);
         for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
@@ -101,7 +101,7 @@ let appState = {
     // UI States
     showTranscript: false,
     activeTab: 'qa', 
-    deviceStatus: 'Awaiting Permission...', // Retained for debug info in startInterviewSession
+    deviceStatus: 'Awaiting Permission...',
     networkQuality: 'checking',
     latencyMs: 0,
     noiseStatus: 'checking',
@@ -124,16 +124,15 @@ function renderApp() {
 
     // --- Header & Logo Setup ---
     const showHeader = currentStep !== AppStep.INTERVIEW;
-    // FIX: Removed INSTRUCTIONS from light background check
     const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM; 
     
     const steps = [
         { id: AppStep.FORM, label: 'Profile' },
-        // { id: AppStep.INSTRUCTIONS, label: 'Check' }, // Removed from flow
         { id: AppStep.INTERVIEW, label: 'Live' },
         { id: AppStep.EVALUATING, label: 'Review' },
         { id: AppStep.RESULT, label: 'Result' },
     ];
+    // Find index of current step in the reduced array
     const currentStepIndex = steps.findIndex(s => s.id === currentStep);
     
     const logoColorClass = isLightBackground ? 'text-indigo-600' : 'text-indigo-400';
@@ -194,7 +193,7 @@ function renderApp() {
     }
 }
 
-// --- RENDER FORM SCREEN ---
+// --- RENDER FORM SCREEN (unchanged) ---
 function renderCandidateForm() {
     const PREDEFINED_ROLES = ["Python Developer", "Frontend Engineer", "Backend Engineer", "Full Stack Developer", "Data Scientist"];
     const LANGUAGES = ["English", "Spanish", "French", "German", "Hindi", "Japanese"];
@@ -274,8 +273,6 @@ function renderCandidateForm() {
         </div>
     `;
 }
-
-// FIX: renderInstructions() is completely removed.
 
 // --- RENDER INTERVIEW SESSION (omitted for brevity) ---
 function renderInterviewSession() {
@@ -627,7 +624,131 @@ function handleFormSubmit(e) {
     startInterviewSession();
 }
 
-// FIX: Removed all utility functions related to the old Instructions screen UI logic.
+
+// Define endInterviewTool globally so it's available for the session config immediately
+const endInterviewTool = {
+    name: 'endInterview',
+    description: 'Call this function ONLY when the interview is explicitly concluded by the model, or the candidate requests termination, or the interview reaches the question limit. This ends the session and triggers scoring.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            reason: {
+                type: Type.STRING,
+                description: 'The reason for ending the interview, e.g., "Completed" or "Candidate terminated".',
+            },
+        },
+        required: ['reason'],
+    },
+};
+
+function drawVisualizer() {
+    const canvas = document.getElementById('audio-canvas');
+    const analyser = appState.analyser;
+    const mouth = document.getElementById('robot-mouth');
+    if (!canvas || !analyser || !mouth) return;
+    
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const resize = () => {
+        canvas.width = canvas.parentElement.clientWidth * dpr;
+        canvas.height = canvas.parentElement.clientHeight * dpr;
+        ctx.scale(dpr, dpr);
+    };
+    window.addEventListener('resize', resize);
+    resize();
+    
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    let time = 0;
+    
+    const draw = () => {
+        appState.animationFrame = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+        
+        const width = canvas.width / dpr;
+        const height = canvas.height / dpr;
+        const centerY = height / 2;
+        time += 0.05;
+        ctx.clearRect(0, 0, width, height);
+        
+        let sum = 0;
+        for(let i = 0; i < bufferLength / 2; i++) sum += dataArray[i];
+        const avg = sum / (bufferLength / 2);
+        const volume = Math.min(1, avg / 50); 
+        
+        const baseRy = 2;  
+        const maxRy = 6;
+        const currentRy = baseRy + (volume * (maxRy - baseRy));
+        mouth.setAttribute('ry', currentRy.toFixed(2));
+
+        const waves = [
+            { freq: 0.01, speed: 0.2, amp: 4, alpha: 1.0, width: 2 },
+            { freq: 0.015, speed: 0.15, amp: 8, alpha: 0.4, width: 1 },
+            { freq: 0.008, speed: 0.1, amp: 12, alpha: 0.1, width: 1 }
+        ];
+
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
+
+        waves.forEach((w) => {
+            ctx.beginPath();
+            ctx.strokeStyle = w.alpha === 1.0 ? 'rgba(255, 255, 255, 0.95)' : `rgba(255, 255, 255, ${w.alpha})`;
+            ctx.lineWidth = w.width;
+            
+            const currentAmp = (w.amp * volume * 1.2) + (volume > 0.05 ? 2 : 1); 
+
+            for (let x = 0; x < width; x++) {
+                const y = centerY + Math.sin(x * w.freq + time * w.speed) * currentAmp;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        });
+        ctx.shadowBlur = 0;
+    };
+    draw();
+}
+
+function disconnectSession() {
+    if (appState.timerInterval) clearInterval(appState.timerInterval);
+    if (appState.silenceInterval) clearInterval(appState.silenceInterval);
+    if (appState.animationFrame) cancelAnimationFrame(appState.animationFrame);
+
+    if (appState.session) {
+        try { appState.session.close(); appState.session = null; } catch (e) { console.warn("Error closing session", e); }
+    }
+    
+    if (appState.stream) {
+        appState.stream.getTracks().forEach(track => track.stop());
+        appState.stream = null;
+    }
+    
+    if (appState.audioContext) { try { appState.audioContext.close(); appState.audioContext = null; } catch(e) {} }
+    if (appState.inputAudioContext) { try { appState.inputAudioContext.close(); appState.inputAudioContext = null; } catch(e) {} }
+
+    updateState({ 
+        isConnected: false,
+        isAiSpeaking: false,
+        isWaitingForResponse: false,
+        terminationTriggered: false
+    }, false);
+    
+    appState.nextAudioStartTime = 0;
+}
+
+function handleTermination(reason) {
+    if (appState.terminationTriggered) return;
+    appState.terminationTriggered = true;
+    
+    console.log(`Terminating Session: ${reason}`);
+    
+    const finalTranscript = appState.fullTranscriptHistory.join('\n');
+    
+    setTimeout(() => {
+        disconnectSession();
+        handleInterviewComplete(finalTranscript, reason);
+    }, 1000);
+}
 
 async function startInterviewSession() {
     disconnectSession();
@@ -963,7 +1084,7 @@ function resetApp() {
 (function initializeApp() {
     window.handleTermination = handleTermination;
     
-    // Initial Render
+    // Initial Render - This MUST work to show the form
     renderApp();
     
     // Start the silent timeout loop
