@@ -138,7 +138,7 @@ function renderApp() {
     const logoColorClass = isLightBackground ? 'text-indigo-600' : 'text-indigo-400';
     const logoElement = `
         <div class="flex items-center gap-2 md:gap-3 pointer-events-auto">
-            <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgMS44LTMuMi4yIDIuMS0uMyA0LjkgMCA1LjU1em0tMyAzLjVjLS40LjYtMS40LjktMS43LS4xLS4zLjgtLjYgMS44LS42LjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMgMi40IDB6Ii8+PC9zdmc+'">
+            <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgMS44LTMuMi4yIDIuMS0uMyA0LjkgMCA1LjU1em0tMyAzLjVjLS40LjYtMS40LjktMS43LS4xLS4zLjgtLjYgMS44LS42LjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMg2LjQgMHoiLz4PC9zdmc+'">
             <h1 class="text-lg md:text-xl font-bold tracking-tight ${isLightBackground ? 'text-slate-900' : 'text-white'}">
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">Interna</span>
                 <span class="${logoColorClass}">.ai</span>
@@ -342,7 +342,7 @@ function renderInstructions() {
                           </div>
                        </div>
                        
-                       <p id="noise-warning-message" class="text-center text-xs text-amber-500 font-bold mt-3 ${appState.noiseStatus === 'fair' ? '' : 'hidden'}">Warning: Noise is fair. Please keep silence for best transcription quality.</p>
+                       <p id="noise-warning-message" class="text-center text-xs text-amber-500 font-bold mt-3 ${appState.noiseStatus === 'fair' ? '' : 'hidden'}">Warning: Non-ideal conditions. Proceeding may affect transcription accuracy.</p>
                        
                        <button id="permission-btn" ${appState.deviceStatus === 'Microphone Granted' ? '' : 'disabled'}
                          class="w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-between px-6 lg:px-8 ${
@@ -899,7 +899,7 @@ async function checkInitialDeviceStatus() {
 }
 
 async function checkPermissionsAndStartInterview() {
-    // FIX: Only check for Microphone Granted and API Key. Ignore Network/Noise status for starting.
+    // FIX: Only check for Microphone Granted. If granted, proceed immediately.
     const isMicGranted = appState.deviceStatus === 'Microphone Granted';
 
     if (!isMicGranted) {
@@ -907,12 +907,15 @@ async function checkPermissionsAndStartInterview() {
         return;
     }
 
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
-        alert("CRITICAL ERROR: Please set your GEMINI_API_KEY at the top of the script.js file to proceed.");
-        return;
+    // FIX: Show a non-blocking warning if API key is missing or is the placeholder.
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE") || GEMINI_API_KEY === "AIzaSyC81YWNH6dBwF67OYLDxjEHeeA--t5uv9g") {
+        alert("⚠️ WARNING: The Gemini API Key is missing or using a placeholder. The interview screen will load, but the AI connection will likely fail with an error until a valid key is provided.");
     }
     
+    // FIX: Immediate state change to guarantee screen transition (Interview Screen)
     updateState({ step: AppStep.INTERVIEW }); 
+    
+    // Proceed to start the session.
     startInterviewSession();
 }
 
