@@ -8,23 +8,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        /* style.css */
-
-        /* Inter Font Import */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
+        /* Global styling based on Interna's look */
         :root {
             font-family: 'Inter', sans-serif;
         }
 
-        /* FIX: Ensure HTML/Body take up full height and prevent main content from hiding */
+        /* Essential Viewport and Layout Fixes */
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f1f5f9; /* Light Gray BG outside container */
+            background-color: #f1f5f9;
         }
-
         #app-container {
             min-height: 100vh; 
             width: 100%;
@@ -33,35 +28,20 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            background-color: #ffffff; /* Main App BG: White */
+            background-color: #ffffff; 
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-
-        /* FIX: Custom Scrollbar colors adjusted for light background */
+        .bg-interna-dark { background-color: #0F172A; }
+        
+        /* Custom Scrollbar */
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-            background-color: rgba(129, 140, 248, 0.7); /* indigo-400/70 */
-            border-radius: 4px; 
-        }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(129, 140, 248, 0.7); border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background-color: transparent; }
         .custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(129, 140, 248, 0.7) transparent; }
 
-        /* Custom Keyframes */
+        /* Animations */
         @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
-        @keyframes slideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-        @keyframes blob {
-            0%, 100% { transform: translate(0px, 0px) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
         .animate-fadeIn { animation: fadeIn 0.5s ease-out; }
-        .animate-slideUp { animation: slideUp 0.5s ease-out; }
-        .animate-blob { animation: blob 7s infinite; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
-
-        /* New background for dark sections (like Interview & Left Form Panel) */
-        .bg-interna-dark { background-color: #0F172A; }
     </style>
     
     <script type="importmap">
@@ -75,12 +55,11 @@
 <body class="h-full">
     <div id="app-container" class="lg:h-[95vh] rounded-xl lg:mt-5">
         <div id="content-area" class="flex-1 w-full relative overflow-hidden flex flex-col">
-            <div class="h-full w-full flex items-center justify-center text-slate-500">Loading App...</div>
-        </div>
+            </div>
     </div>
 
     <script type="module">
-        // script.js
+        // script.js (Refactored to be robust with permission step)
 
         import { GoogleGenAI, Type } from 'https://aistudiocdn.com/@google/genai@^1.30.0';
 
@@ -93,6 +72,7 @@
         // --- TYPES & CONSTANTS ---
         const AppStep = {
             FORM: 'FORM',
+            PERMISSION: 'PERMISSION', // Re-introduced permission step for reliability
             INTERVIEW: 'INTERVIEW',
             EVALUATING: 'EVALUATING',
             RESULT: 'RESULT',
@@ -192,7 +172,6 @@
 
         function updateState(newState, render = true) {
             Object.assign(appState, newState);
-            // FIX: Render only when requested OR if step has changed, to reduce flickering
             if (render || newState.step !== undefined) renderApp();
         }
 
@@ -205,15 +184,15 @@
 
             // --- Header & Logo Setup ---
             const showHeader = currentStep !== AppStep.INTERVIEW;
-            const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM; 
+            const isLightBackground = currentStep === AppStep.RESULT || currentStep === AppStep.FORM || currentStep === AppStep.PERMISSION; 
             
             const steps = [
                 { id: AppStep.FORM, label: 'Profile' },
+                { id: AppStep.PERMISSION, label: 'Check' }, // Added back for flow clarity
                 { id: AppStep.INTERVIEW, label: 'Live' },
                 { id: AppStep.EVALUATING, label: 'Review' },
                 { id: AppStep.RESULT, label: 'Result' },
             ];
-            // Find index of current step in the reduced array
             const currentStepIndex = steps.findIndex(s => s.id === currentStep);
             
             const logoColorClass = isLightBackground ? 'text-indigo-600' : 'text-indigo-400';
@@ -251,6 +230,7 @@
             
             // --- Content Rendering ---
             if (currentStep === AppStep.FORM) html = renderCandidateForm();
+            else if (currentStep === AppStep.PERMISSION) html = renderPermissionScreen(); // New step rendering
             else if (currentStep === AppStep.INTERVIEW) html = renderInterviewSession();
             else if (currentStep === AppStep.EVALUATING) html = renderEvaluatingScreen();
             else if (currentStep === AppStep.RESULT) html = renderResultScreen();
@@ -259,9 +239,11 @@
 
             // Re-attach listeners
             if (currentStep === AppStep.FORM) {
-                // FIX: Ensure listener is attached to the form submit event
                 document.getElementById('candidate-form')?.addEventListener('submit', handleFormSubmit);
             } 
+            else if (currentStep === AppStep.PERMISSION) {
+                document.getElementById('permission-btn')?.addEventListener('click', checkPermissionsAndStart);
+            }
             else if (currentStep === AppStep.INTERVIEW) {
                 const muteBtn = document.getElementById('mute-btn');
                 if (muteBtn) muteBtn.onclick = toggleMute;
@@ -275,7 +257,7 @@
             }
         }
 
-        // --- RENDER FORM SCREEN (unchanged) ---
+        // --- RENDER FORM SCREEN ---
         function renderCandidateForm() {
             const PREDEFINED_ROLES = ["Python Developer", "Frontend Engineer", "Backend Engineer", "Full Stack Developer", "Data Scientist"];
             const LANGUAGES = ["English", "Spanish", "French", "German", "Hindi", "Japanese"];
@@ -356,6 +338,89 @@
             `;
         }
 
+        // --- RENDER PERMISSION SCREEN ---
+        function renderPermissionScreen() {
+            const status = appState.deviceStatus;
+            
+            return `
+                <div class="flex flex-col lg:grid lg:grid-cols-12 h-full w-full animate-fadeIn">
+                    <div class="lg:col-span-5 bg-interna-dark relative overflow-hidden flex flex-col justify-end lg:justify-center p-8 pt-24 lg:p-20 text-white min-h-[30vh] lg:min-h-0 shrink-0">
+                        <div class="relative z-10 space-y-4 lg:space-y-6">
+                            <h1 class="text-3xl md:text-4xl lg:text-6xl font-bold tracking-tight leading-tight">
+                                One More Step
+                            </h1>
+                            <p class="text-xl md:text-2xl lg:text-3xl font-light text-slate-200 leading-tight">
+                                Access Microphone to Begin
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-7 bg-white flex flex-col flex-1 overflow-y-auto relative">
+                        <div class="flex-1 p-8 lg:p-24 flex flex-col justify-center">
+                            <div class="max-w-xl w-full mx-auto">
+                                <div class="mb-8">
+                                    <h2 class="text-2xl font-bold text-slate-900">Device Check</h2>
+                                    <p class="text-slate-500 mt-2">We require microphone access to start the voice interview.</p>
+                                </div>
+                                <div class="space-y-4">
+                                    <div class="bg-slate-100 p-4 rounded-xl border border-slate-200">
+                                        <span id="mic-status-label" class="text-lg font-bold ${status === 'Microphone Granted' ? 'text-emerald-600' : 'text-slate-700'}">${status}</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-8">
+                                    <button id="permission-btn" 
+                                        class="w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                                            status === 'Microphone Granted' 
+                                            ? 'bg-slate-900 text-white hover:bg-indigo-600' 
+                                            : status === 'Awaiting Permission...' 
+                                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                            : 'bg-rose-600 text-white'
+                                        }"
+                                    >
+                                        <span>${status === 'Microphone Granted' ? 'Continue to Interview' : 'Request Microphone'}</span>
+                                    </button>
+                                    <p id="mic-denied-message" class="text-center text-xs text-rose-500 font-bold mt-3 ${status === 'Microphone Denied' ? '' : 'hidden'}">Microphone access denied. Please allow permission to continue.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function checkPermissionsAndStart() {
+            const micStatus = document.getElementById('mic-status-label');
+            const permBtn = document.getElementById('permission-btn');
+            
+            // 1. Update UI to show progress
+            if (micStatus) micStatus.textContent = 'Requesting Access...';
+            if (permBtn) permBtn.disabled = true;
+
+            try {
+                // Request Mic Permission
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop()); // Stop immediately after checking access
+
+                // Update app state and UI
+                updateState({ deviceStatus: 'Microphone Granted' }, true); 
+
+                // Proceed to interview start, which includes API checks and connection
+                startInterviewSession();
+
+            } catch (error) {
+                console.error("Permission Check Error:", error);
+                
+                // If permission is denied/fails
+                updateState({ deviceStatus: 'Microphone Denied' }, true);
+                
+                // Re-enable button to allow user to try again
+                if (permBtn) permBtn.disabled = false;
+                
+                alert("Permission Denied: Please allow microphone access to start the interview.");
+            }
+        }
+        
         // --- RENDER INTERVIEW SESSION (omitted for brevity) ---
         function renderInterviewSession() {
             const { status, timeLeft, isMuted, showTranscript, systemMessageStatus, transcriptLines, violationMessage, warningCount } = appState;
@@ -696,20 +761,18 @@
                 }
                 errorMsg.classList.add('hidden');
 
-                // 1. Force state transition to Live screen immediately
+                // 1. Store candidate data
                 updateState({ 
                     candidate: { name, jobDescription, field, language },
-                    step: AppStep.INTERVIEW,
                     deviceStatus: 'Awaiting Permission...', 
                 });
-                
-                // 2. Start the heavy asynchronous call immediately
-                startInterviewSession();
 
+                // 2. Transition to Permission screen to ask for mic access (prevents synchronous crash)
+                updateState({ step: AppStep.PERMISSION }); 
+                
             } catch (error) {
-                console.error("SYNCHRONOUS CRASH: Failed during UI transition or initial setup:", error);
-                // This alert informs the user that something failed during the start process.
-                alert("CRITICAL ERROR: Failed to start the interview. Please check console for component failure (e.g., AudioContext or Mic).");
+                console.error("SYNCHRONOUS FORM SUBMISSION ERROR:", error);
+                alert("CRITICAL ERROR: Failed during form processing. Please check console.");
             }
         }
 
@@ -1027,8 +1090,12 @@
                 
             } catch (e) {
                 console.error("Live Audio Initialization Error:", e);
-                if (appState.deviceStatus !== 'Microphone Granted') {
-                     alert("CRITICAL DEVICE ERROR: Could not access microphone. Please ensure permissions are granted and no other application is using the microphone.");
+                // If this is a media error, we should update the UI state to show the error.
+                if (e.name === 'NotAllowedError' || e.name === 'NotFoundError') {
+                     alert("CRITICAL DEVICE ERROR: Microphone permission failed or device not found. Please ensure permissions are granted.");
+                } else {
+                     // Generic internal connection error
+                     alert("CRITICAL ERROR: Failed to establish AI connection. Please check console.");
                 }
                 updateState({ status: 'error' }, true);
             }
