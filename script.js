@@ -138,7 +138,7 @@ function renderApp() {
     const logoColorClass = isLightBackground ? 'text-indigo-600' : 'text-indigo-400';
     const logoElement = `
         <div class="flex items-center gap-2 md:gap-3 pointer-events-auto">
-            <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgMS44LTMuMi4yIDIuMS0uMyA0LjkgMCA1LjV6bS0zIDMuNWMtLjQuNi0xLjQuOS0xLjctLjEtLjMuOC0uNiAxLjgtLjYgLjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMgMi40IDB6Ii8+PC9zdmc+'">
+            <img src="interna.png" alt="Interna Logo" class="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-lg shadow-indigo-600/20" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iI2Q5ZGVlYiI+PHBhdGggZD0iTTEyIDJjNS41MjMgMCAxMCA0LjQ3NyAxMCAxMHMtNC40NzcgMTAtMTAgMTAtMTAtNC40NzctMTAtMTBzNC40NzctMTAtMTAtMTB6TTkuNSA1LjVjLjgtMS4yIDEuOC0yLjMgMi41LTMuMy0uNyAxLjEtMS43IDIuMy0yLjUgMy4zek0xNC41IDUuNWMuOC0xLjIgMS44LTIuMyAyLjUtMy4zLS43IDEuMS0xLjcgMi4zLTIuNSAzLjN6TTE0LjUgMTAuNmMuNy43IDEuOC43IDIuNSAwIDAtLjctLjQtMS40LS44LTItLjQuNi0xLjUuOS0xLjcuOXptLTYuNS0xLjVjLjQtLjYgMS40LS45IDEuNy0uOS40LjUgLjcuNiAxLjIgMS4zLS40LjctMS40IDEuMS0yLjIgMS42IDAtLjUtLjUtLjctLjctMS4yem0tMiA0Yy4zLS44LjYtMS42IDEtMi41LS43LS45LTEuMy0xLjktMS44LTMtLjIgMi4xLjMgNC45IDAgNS41em0xMC41IDBjLS4zLS44LS42LTEuNi0xLTIuNS43LS45IDEuMy0xLjkgxLjgtMy4yLjIgMi4xLS4zIDQuOSAwIDUuNTV6bS0zIDMuNWMtLjQuNi0xLjQuOS0xLjctLjEtLjMuOC0uNiAxLjgtLjYgLjQgMC0uMS0uNi0uMS0xLjJ6bS00IDBjLS43LS40LTEuOC0uNC0yLjcgMC0uMy41LS41IDEuMS0uNiAxLjcuOCAwIDEuNi0uMyAyLjMtLjQuNi0uMyAxLjQtLjMgMi40IDB6Ii8+PC9zdmc+'">
             <h1 class="text-lg md:text-xl font-bold tracking-tight ${isLightBackground ? 'text-slate-900' : 'text-white'}">
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">Interna</span>
                 <span class="${logoColorClass}">.ai</span>
@@ -181,6 +181,8 @@ function renderApp() {
     if (currentStep === AppStep.FORM) {
         document.getElementById('candidate-form')?.addEventListener('submit', handleFormSubmit);
     } else if (currentStep === AppStep.INSTRUCTIONS) {
+        // We re-render Instructions, so we must also call a UI update right after to ensure initial state is correct and the interval updates can find the elements
+        updateInstructionsUI(); 
         document.getElementById('permission-btn')?.addEventListener('click', checkPermissionsAndStartInterview);
     } else if (currentStep === AppStep.INTERVIEW) {
         const muteBtn = document.getElementById('mute-btn');
@@ -281,7 +283,6 @@ function renderInstructions() {
     const status = appState.deviceStatus;
     const netUI = getNetworkUI(appState.latencyMs);
     const noiseUI = getNoiseUI(appState.noiseStatus);
-    const canStart = status === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad';
 
     return `
         <div class="flex flex-col lg:grid lg:grid-cols-12 h-full w-full animate-fadeIn">
@@ -299,15 +300,15 @@ function renderInstructions() {
                       <p class="text-slate-400 max-w-xs lg:max-w-sm mx-auto text-sm">We are checking your microphone and network stability for the voice interview.</p>
                       
                       <div class="mt-6 space-y-3">
-                          <div class="flex items-center justify-between p-3 rounded-lg ${appState.deviceStatus === 'Microphone Granted' ? 'bg-emerald-500/20' : 'bg-rose-500/20'} border ${appState.deviceStatus === 'Microphone Granted' ? 'border-emerald-500/30' : 'border-rose-500/30'}">
+                          <div id="mic-status-container" class="flex items-center justify-between p-3 rounded-lg ${appState.deviceStatus === 'Microphone Granted' ? 'bg-emerald-500/20' : 'bg-rose-500/20'} border ${appState.deviceStatus === 'Microphone Granted' ? 'border-emerald-500/30' : 'border-rose-500/30'}">
                               <span class="text-sm font-medium ${appState.deviceStatus === 'Microphone Granted' ? 'text-emerald-400' : 'text-rose-400'}" id="mic-status-label">${status}</span>
                               <span class="text-xs text-slate-400">${appState.deviceStatus === 'Awaiting Permission...' ? 'Request Access below' : ''}</span>
                           </div>
-                          <div class="flex items-center justify-between p-3 rounded-lg ${netUI.bg} ${netUI.border}">
+                          <div id="net-status-container" class="flex items-center justify-between p-3 rounded-lg ${netUI.bg} ${netUI.border}">
                               <span class="text-sm font-medium ${netUI.color}">${netUI.label} (${appState.latencyMs}ms)</span>
                               <span class="text-xs text-slate-400">${netUI.desc}</span>
                           </div>
-                          <div class="flex items-center justify-between p-3 rounded-lg ${noiseUI.bg} ${noiseUI.border}">
+                          <div id="noise-status-container" class="flex items-center justify-between p-3 rounded-lg ${noiseUI.bg} ${noiseUI.border}">
                               <span class="text-sm font-medium ${noiseUI.color}">${noiseUI.label}</span>
                               <span class="text-xs text-slate-400">${noiseUI.desc}</span>
                           </div>
@@ -341,9 +342,9 @@ function renderInstructions() {
                           </div>
                        </div>
 
-                       <button id="permission-btn" ${canStart ? '' : 'disabled'}
+                       <button id="permission-btn" ${status === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad' ? '' : 'disabled'}
                          class="w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-between px-6 lg:px-8 ${
-                           canStart
+                           status === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad'
                            ? 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-indigo-200 cursor-pointer transform hover:-translate-y-1' 
                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                          }"
@@ -353,8 +354,8 @@ function renderInstructions() {
                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
                          </svg>
                        </button>
-                       ${appState.noiseStatus === 'bad' ? '<p class="text-center text-xs text-rose-500 font-bold mt-3">Cannot start: Environment is too noisy. Please ensure silence.</p>' : ''}
-                       ${status === 'Microphone Denied' ? '<p class="text-center text-xs text-rose-500 font-bold mt-3">Microphone access denied. Please allow permission to continue.</p>' : ''}
+                       <p id="noise-error-message" class="text-center text-xs text-rose-500 font-bold mt-3 ${appState.noiseStatus === 'bad' ? '' : 'hidden'}">Cannot start: Environment is too noisy. Please ensure silence.</p>
+                       <p id="mic-denied-message" class="text-center text-xs text-rose-500 font-bold mt-3 ${status === 'Microphone Denied' ? '' : 'hidden'}">Microphone access denied. Please allow permission to continue.</p>
                    </div>
                </div>
             </div>
@@ -727,6 +728,66 @@ function getNoiseUI(noiseStatus) {
     return { color: 'text-slate-400', bg: 'bg-slate-500/20', border: 'border-slate-500/30', label: 'Noise: Testing...', desc: 'Testing environment...' };
 }
 
+// FIX: New function for direct DOM updates on the Instructions screen to prevent flickering
+function updateInstructionsUI() {
+    if (appState.step !== AppStep.INSTRUCTIONS) return;
+
+    const micContainer = document.getElementById('mic-status-container');
+    const micLabel = document.getElementById('mic-status-label');
+    const permissionBtn = document.getElementById('permission-btn');
+    const netContainer = document.getElementById('net-status-container');
+    const noiseContainer = document.getElementById('noise-status-container');
+    const noiseMsg = document.getElementById('noise-error-message');
+    const micDeniedMsg = document.getElementById('mic-denied-message');
+
+    const status = appState.deviceStatus;
+    const netUI = getNetworkUI(appState.latencyMs);
+    const noiseUI = getNoiseUI(appState.noiseStatus);
+    const canStart = status === 'Microphone Granted' && appState.networkQuality !== 'poor' && appState.noiseStatus !== 'bad';
+
+    if (micContainer && micLabel) {
+        micLabel.textContent = status;
+        micContainer.className = `flex items-center justify-between p-3 rounded-lg ${status === 'Microphone Granted' ? 'bg-emerald-500/20' : 'bg-rose-500/20'} border ${status === 'Microphone Granted' ? 'border-emerald-500/30' : 'border-rose-500/30'}`;
+        micLabel.className = `text-sm font-medium ${status === 'Microphone Granted' ? 'text-emerald-400' : 'text-rose-400'}`;
+        micLabel.nextElementSibling.textContent = status === 'Awaiting Permission...' ? 'Request Access below' : '';
+    }
+
+    if (netContainer) {
+        netContainer.className = `flex items-center justify-between p-3 rounded-lg ${netUI.bg} ${netUI.border}`;
+        netContainer.querySelector('span:first-child').className = `text-sm font-medium ${netUI.color}`;
+        netContainer.querySelector('span:first-child').textContent = `${netUI.label} (${appState.latencyMs}ms)`;
+        netContainer.querySelector('span:last-child').textContent = netUI.desc;
+    }
+
+    if (noiseContainer) {
+        noiseContainer.className = `flex items-center justify-between p-3 rounded-lg ${noiseUI.bg} ${noiseUI.border}`;
+        noiseContainer.querySelector('span:first-child').className = `text-sm font-medium ${noiseUI.color}`;
+        noiseContainer.querySelector('span:first-child').textContent = noiseUI.label;
+        noiseContainer.querySelector('span:last-child').textContent = noiseUI.desc;
+    }
+
+    if (permissionBtn) {
+        permissionBtn.disabled = !canStart;
+        
+        // This is complex, so updating innerHTML for the button is reasonable
+        permissionBtn.innerHTML = `
+            <span>${status === 'Awaiting Permission...' ? 'Request Microphone Access' : 'Accept & Begin Interview'}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5 lg:w-6 lg:h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+            </svg>
+        `;
+        permissionBtn.className = `w-full py-4 lg:py-5 rounded-xl font-bold shadow-lg transition-all flex items-center justify-between px-6 lg:px-8 ${
+            canStart
+            ? 'bg-slate-900 text-white hover:bg-indigo-600 hover:shadow-indigo-200 cursor-pointer transform hover:-translate-y-1' 
+            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+        }`;
+    }
+    
+    if (noiseMsg) noiseMsg.classList.toggle('hidden', appState.noiseStatus !== 'bad');
+    if (micDeniedMsg) micDeniedMsg.classList.toggle('hidden', appState.deviceStatus !== 'Microphone Denied');
+}
+
+
 async function checkNetworkSpeed() {
     const start = Date.now();
     let duration = 999;
@@ -741,9 +802,10 @@ async function checkNetworkSpeed() {
     if (duration < 150) quality = 'excellent';
     else if (duration < 400) quality = 'fair';
 
-    // FIX: Only render if in instructions step to prevent unnecessary updates
+    // FIX: Update state without full re-render, then call direct UI update
     if (appState.step === AppStep.INSTRUCTIONS) {
-        updateState({ networkQuality: quality, latencyMs: duration }, true);
+        Object.assign(appState, { networkQuality: quality, latencyMs: duration });
+        updateInstructionsUI();
     } else {
          Object.assign(appState, { networkQuality: quality, latencyMs: duration });
     }
@@ -777,9 +839,10 @@ function handleAudioInput(stream) {
             else if (averageVolume < 30) noiseStatus = 'fair';
             else noiseStatus = 'bad';
             
-            // FIX: Only render if in instructions step
+            // FIX: Update state without full re-render, then call direct UI update
             if (appState.step === AppStep.INSTRUCTIONS) {
-                updateState({ noiseStatus }, true);
+                Object.assign(appState, { noiseStatus });
+                updateInstructionsUI();
             } else {
                 Object.assign(appState, { noiseStatus });
             }
@@ -798,8 +861,9 @@ async function checkInitialDeviceStatus() {
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // FIX: Update state and re-render to re-enable button
-        updateState({ deviceStatus: 'Microphone Granted' }, true); 
+        // FIX: Update state and call direct UI update to re-enable button without flickering
+        Object.assign(appState, { deviceStatus: 'Microphone Granted' });
+        updateInstructionsUI(); 
         
         handleAudioInput(stream); 
 
@@ -808,8 +872,9 @@ async function checkInitialDeviceStatus() {
 
     } catch (error) {
         console.error("Media error", error);
-        // FIX: Update state and re-render to update UI and keep button disabled
-        updateState({ deviceStatus: 'Microphone Denied', noiseStatus: 'bad' }, true);
+        // FIX: Update state and call direct UI update to update UI and keep button disabled without flickering
+        Object.assign(appState, { deviceStatus: 'Microphone Denied', noiseStatus: 'bad' });
+        updateInstructionsUI();
     }
 }
 
