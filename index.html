@@ -559,8 +559,7 @@
 
                         <div class="hidden lg:block p-8 border-t border-slate-100 bg-slate-50/50">
                             <button id="reset-btn-desktop" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-indigo-600 transition-all shadow-lg hover:shadow-indigo-200 flex items-center justify-center gap-2">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
-                              Start New Interview
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" class="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
                             </button>
                         </div>
                       </div>
@@ -708,9 +707,9 @@
                 startInterviewSession();
 
             } catch (error) {
-                console.error("CRITICAL FORM SUBMISSION ERROR:", error);
-                // Fallback alert if the transition failed for an unexpected reason
-                alert("CRITICAL ERROR: Failed to start the interview. Please check console.");
+                console.error("SYNCHRONOUS CRASH: Failed during UI transition or initial setup:", error);
+                // This alert informs the user that something failed during the start process.
+                alert("CRITICAL ERROR: Failed to start the interview. Please check console for component failure (e.g., AudioContext or Mic).");
             }
         }
 
@@ -855,7 +854,7 @@
                 // --- DEVICE SETUP (Now combined and essential) ---
                 // 1. Get Microphone stream (This is the most critical step)
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: { channelCount: 1, echoCancellation: true, autoGainControl: true, noiseSuppression: true } 
+                    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } 
                 });
                 appState.stream = stream;
                 updateState({ deviceStatus: 'Microphone Granted' }, false);
@@ -1042,7 +1041,15 @@
         }
 
         async function generateScore(transcript, terminationReason) {
-            // ... (scoring logic omitted for brevity) ...
+            if (terminationReason && terminationReason !== "Completed" && terminationReason !== "Completed (AI spoken conclusion detected)") {
+                setTimeout(() => {
+                    updateState({ 
+                        result: { rating: 0, feedback: "Interview terminated early due to security or time violation.", passed: false, questions: [], terminationReason },
+                        step: AppStep.RESULT 
+                    });
+                }, 1500);
+                return;
+            }
 
             try {
                 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -1061,7 +1068,16 @@
                     ---
                     
                     TASK: Generate the assessment in pure JSON following the schema.
-                    // ... (schema definition omitted for brevity) ...
+                    
+                    1. Analyze the technical accuracy, clarity, and communication style.
+                    2. **STRICT MARKING**: The overall rating (1-10) and per-question ratings (1-10) must be **genuinely reflective** of performance. A score of 7 or above is a pass.
+                    3. **Question Structure (5 MANDATORY)**: Identify exactly 5 distinct Q&A segments (questions asked by the AI and answered by the candidate). If the transcript has fewer, deduce the best 5. For each question:
+                       - **question**: The full text of the question asked by the AI.
+                       - **candidateAnswerSummary**: A concise summary of the candidate's response. Use "[No Answer - Time Limit Exceeded]" for silence penalties.
+                       - **rating**: An integer score from 1 to 10.
+                       - **feedback**: **CRITICAL**: Detailed, professional explanation (1-2 sentences) of the rating. **Explicitly state what was missing or incorrect, and why marks were deducted.**
+
+                    Output pure JSON.
                 `;
 
                 const response = await ai.models.generateContent({
